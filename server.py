@@ -36,5 +36,35 @@ def download_processed_video():
     if not os.path.exists('./static/detections/final_output.mp4'): return "Video not finished processing", 404
     return send_file('./static/detections/final_output.mp4', mimetype='video/mp4')
 
+from src.app_helper import get_image, detectionAPI
+
+@app.route('/api/process_image', methods=['POST'])
+def process_image():
+    f = request.files['image']
+    filename = secure_filename(f.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    f.save(filepath)
+    
+    response = {}
+    get_image(filepath, filename, response)
+    
+    return jsonify({'response': convert_numpy(response)})
+
+@app.route('/api/detection_json', methods=['POST'])
+def detection_json():
+    f = request.files['image']
+    filename = secure_filename(f.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    f.save(filepath)
+    
+    response = {}
+    detectionAPI(response, filepath)
+    
+    return jsonify({'response': convert_numpy(response)})
+
+@app.route('/api/detections/<filename>')
+def get_detection_image(filename):
+    return send_file(f'./static/detections/{filename}')
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
