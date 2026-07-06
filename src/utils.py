@@ -13,7 +13,14 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 tf.disable_v2_behavior()
 
+_cached_tf_session_vars = None
+_cached_op_wrapper = None
+_cached_op_datum = None
+
 def tensorflow_init():
+    global _cached_tf_session_vars
+    if _cached_tf_session_vars is not None:
+        return _cached_tf_session_vars
     MODEL_NAME = 'inference_graph'
     PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
 
@@ -30,9 +37,13 @@ def tensorflow_init():
     scores = detection_graph.get_tensor_by_name('detection_scores:0')
     classes = detection_graph.get_tensor_by_name('detection_classes:0')
     num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-    return detection_graph, image_tensor, boxes, scores, classes, num_detections
+    _cached_tf_session_vars = (detection_graph, image_tensor, boxes, scores, classes, num_detections)
+    return _cached_tf_session_vars
 
 def openpose_init():
+    global _cached_op_wrapper, _cached_op_datum
+    if _cached_op_wrapper is not None:
+        return _cached_op_datum, _cached_op_wrapper
     try:
         if platform == "win32":
             sys.path.append(os.path.dirname(os.getcwd()))
@@ -56,8 +67,9 @@ def openpose_init():
     opWrapper.start()
 
     # Process Image
-    datum = op.Datum()
-    return datum, opWrapper
+    _cached_op_datum = op.Datum()
+    _cached_op_wrapper = opWrapper
+    return _cached_op_datum, _cached_op_wrapper
 
 def fit_func(x, a, b, c):
     return a*(x ** 2) + b * x + c
@@ -307,7 +319,11 @@ def detect_image(img, response):
     height, width = img.shape[:2]
     detection_graph, image_tensor, boxes, scores, classes, num_detections = tensorflow_init()
 
-    with tf.Session(graph=detection_graph) as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.36
+
+    with tf.Session(graph=detection_graph, config=config) as sess:
         img_expanded = np.expand_dims(img, axis=0)
         (boxes, scores, classes, num_detections) = sess.run(
             [boxes, scores, classes, num_detections],
@@ -370,7 +386,11 @@ def detect_API(response, img):
     height, width = img.shape[:2]
     detection_graph, image_tensor, boxes, scores, classes, num_detections = tensorflow_init()
 
-    with tf.Session(graph=detection_graph) as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.36
+
+    with tf.Session(graph=detection_graph, config=config) as sess:
         img_expanded = np.expand_dims(img, axis=0)
         (boxes, scores, classes, num_detections) = sess.run(
             [boxes, scores, classes, num_detections],

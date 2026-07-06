@@ -13,7 +13,7 @@ app.secret_key = "super secret key"
 # PASTE YOUR NGROK URL HERE (No trailing slash)
 # e.g., KAGGLE_GPU_URL = "http://abcdef.ngrok.io"
 # =========================================================================
-KAGGLE_GPU_URL = "https://iukpu-34-34-121-231.free.pinggy.net"
+KAGGLE_GPU_URL = "https://qhadw-34-34-121-231.free.pinggy.net"
 
 # Required to bypass Ngrok's free tier browser warning screen for API requests
 NGROK_HEADERS = {"ngrok-skip-browser-warning": "true"}
@@ -45,8 +45,8 @@ def upload_sample_image():
         
         data = r.json()
         response = data['response']
-        # Point the frontend to the image generated on Kaggle
-        display_url = f"{KAGGLE_GPU_URL}/api/detections/{filename}"
+        # Point the frontend to the image generated on Kaggle, proxied locally to bypass pinggy warning
+        display_url = f"/api/detections/{filename}"
         return render_template("shot_detection.html", display_detection=display_url, fname=filename, response=response)
 
 @app.route('/basketball_detection', methods=['GET', 'POST'])
@@ -59,7 +59,7 @@ def upload_image():
         
         data = r.json()
         response = data['response']
-        display_url = f"{KAGGLE_GPU_URL}/api/detections/{filename}"
+        display_url = f"/api/detections/{filename}"
         return render_template("shot_detection.html", display_detection=display_url, fname=filename, response=response)
 
 @app.route('/sample_analysis', methods=['GET', 'POST'])
@@ -88,7 +88,17 @@ def video_feed():
     video_path = session.get('video_path', None)
     # Stream the multipart frames directly from Kaggle GPU
     req = requests.get(f"{KAGGLE_GPU_URL}/api/video_feed", params={'video_path': video_path}, stream=True, headers=NGROK_HEADERS)
-    return Response(req.iter_content(chunk_size=1024), content_type=req.headers.get('Content-Type', 'text/plain'))
+    return Response(req.iter_content(chunk_size=1024), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/api/detections/<filename>')
+def proxy_detection_image(filename):
+    req = requests.get(f"{KAGGLE_GPU_URL}/api/detections/{filename}", stream=True, headers=NGROK_HEADERS)
+    return Response(req.iter_content(chunk_size=1024), content_type=req.headers.get('Content-Type', 'image/jpeg'))
+
+@app.route('/api/download_processed_video')
+def proxy_download_processed_video():
+    req = requests.get(f"{KAGGLE_GPU_URL}/api/download_processed_video", stream=True, headers=NGROK_HEADERS)
+    return Response(req.iter_content(chunk_size=1024), content_type=req.headers.get('Content-Type', 'video/mp4'))
 
 @app.route("/result", methods=['GET', 'POST'])
 def result():
