@@ -269,12 +269,12 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                         
                         shooting_result['shots'].append({
                             'result': shot_result['judgement'],
-                            'release_angle': during_shooting['release_angle_list'][-1] if during_shooting['release_angle_list'] else 0,
-                            'elbow_angle': shooting_pose['elbow_angle'],
-                            'knee_angle': shooting_pose['knee_angle'],
-                            'ballInHand_frames': shooting_pose['ballInHand_frames'],
-                            'trajectory': list(during_shooting['balls_during_shooting']),
-                            'hoop_bbox': previous['hoop']
+                            'release_angle': float(during_shooting['release_angle_list'][-1]) if during_shooting['release_angle_list'] else 0.0,
+                            'elbow_angle': float(shooting_pose['elbow_angle']),
+                            'knee_angle': float(shooting_pose['knee_angle']),
+                            'ballInHand_frames': int(shooting_pose['ballInHand_frames']),
+                            'trajectory': [[int(x) for x in pt] for pt in during_shooting['balls_during_shooting']],
+                            'hoop_bbox': [int(x) for x in previous['hoop']]
                         })
 
                         during_shooting['balls_during_shooting'].clear()
