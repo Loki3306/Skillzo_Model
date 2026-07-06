@@ -45,7 +45,7 @@ def process_image():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     f.save(filepath)
     
-    response = {}
+    response = []
     get_image(filepath, filename, response)
     
     return jsonify({'response': convert_numpy(response)})
@@ -57,7 +57,7 @@ def detection_json():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     f.save(filepath)
     
-    response = {}
+    response = []
     detectionAPI(response, filepath)
     
     return jsonify({'response': convert_numpy(response)})

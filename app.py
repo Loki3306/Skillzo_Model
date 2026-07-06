@@ -13,7 +13,7 @@ app.secret_key = "super secret key"
 # PASTE YOUR NGROK URL HERE (No trailing slash)
 # e.g., KAGGLE_GPU_URL = "http://abcdef.ngrok.io"
 # =========================================================================
-KAGGLE_GPU_URL = "https://gdmmu-34-34-121-231.free.pinggy.net"
+KAGGLE_GPU_URL = "https://iukpu-34-34-121-231.free.pinggy.net"
 
 # Required to bypass Ngrok's free tier browser warning screen for API requests
 NGROK_HEADERS = {"ngrok-skip-browser-warning": "true"}
