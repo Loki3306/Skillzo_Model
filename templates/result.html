@@ -70,22 +70,34 @@
             </div>
         </div>
     </div>
+    <div class="row" style="margin-top: 30px; justify-content: center;">
+        <div class="image-container" style="width: 80%; text-align: center;">
+            <div class="image-description" style="margin-bottom: 10px;">
+                <div class="stat-name">Analyzed Video (Normal Speed)</div>
+                <div class="underline"></div>
+            </div>
+            <video controls autoplay loop style="max-width: 100%; border: 3px solid #e1b382; border-radius: 8px;">
+                <source src="{{KAGGLE_GPU_URL}}/api/download_processed_video" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
     <div class="row">
         <div class="image-container">
             <div class="image-description">
                 <div class="stat-name">Tracing Result</div>
                 <div class="underline"></div>
             </div>
-            <a href="/static/detections/basketball_trace.jpg" target="_new"><img
-                    src="/static/detections/basketball_trace.jpg" class="upload-image-thumb"></a>
+            <a href="{{KAGGLE_GPU_URL}}/api/detections/basketball_trace.jpg" target="_new"><img
+                    src="{{KAGGLE_GPU_URL}}/api/detections/basketball_trace.jpg" class="upload-image-thumb" onerror="this.style.display='none'"></a>
         </div>
         <div class="image-container">
             <div class="image-description">
                 <div class="stat-name">Trajectory Fitting</div>
                 <div class="underline trajectory-underline"></div>
             </div>
-            <a href="/static/detections/trajectory_fitting.jpg" target="_new"><img
-                    src="/static/detections/trajectory_fitting.jpg" class="upload-image-thumb"></a>
+            <a href="{{KAGGLE_GPU_URL}}/api/detections/trajectory_fitting.jpg" target="_new"><img
+                    src="{{KAGGLE_GPU_URL}}/api/detections/trajectory_fitting.jpg" class="upload-image-thumb" onerror="this.style.display='none'"></a>
         </div>
     </div>
 </div>

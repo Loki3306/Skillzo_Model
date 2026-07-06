@@ -1,19 +1,22 @@
 import os
-import sys
-import cv2
-
-from flask import Flask, render_template, Response,  request, session, redirect, url_for, send_from_directory, flash, jsonify, abort
+import requests
+from flask import Flask, render_template, Response, request, session, jsonify, abort
 from werkzeug.utils import secure_filename
-from PIL import Image
-
-from src.config import shooting_result
-from src.app_helper import getVideoStream, get_image, detectionAPI
 
 app = Flask(__name__)
 UPLOAD_FOLDER = './static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-#useless key, in order to use session
-app.secret_key = "super secret key" 
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.secret_key = "super secret key"
+
+# =========================================================================
+# PASTE YOUR NGROK URL HERE (No trailing slash)
+# e.g., KAGGLE_GPU_URL = "http://abcdef.ngrok.io"
+# =========================================================================
+KAGGLE_GPU_URL = "https://remedy-keyboard-mileage-potential.trycloudflare.com"
+
+# Required to bypass Ngrok's free tier browser warning screen for API requests
+NGROK_HEADERS = {"ngrok-skip-browser-warning": "true"}
 
 @app.route("/")
 def index():
@@ -22,95 +25,75 @@ def index():
 @app.route('/detection_json', methods=['GET', 'POST'])
 def detection_json():
     if request.method == 'POST':
-        response = []
         f = request.files['image']
-        # create a secure filename
-        filename = secure_filename(f.filename)
-        print("filename", filename)
-        # save file to /static/uploads
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print("filepath", filepath)
-        f.save(filepath)
-        detectionAPI(response, filepath)
-        print(response)
+        files = {'image': (f.filename, f.read(), f.mimetype)}
         try:
-            return jsonify(response), 200
-        except FileNotFoundError:
-            abort(404)
-
+            r = requests.post(f"{KAGGLE_GPU_URL}/api/detection_json", files=files, headers=NGROK_HEADERS)
+            return jsonify(r.json()), r.status_code
+        except Exception as e:
+            print("Error connecting to Kaggle GPU:", e)
+            abort(500)
 
 @app.route('/sample_detection', methods=['GET', 'POST'])
 def upload_sample_image():
     if request.method == 'POST':
-        response = []
         filename = "sample_image.jpg"
-        print("filename", filename)
         filepath = "./static/uploads/sample_image.jpg"
-        print("filepath", filepath)
-        get_image(filepath, filename, response)
-        return render_template("shot_detection.html", display_detection=filename, fname=filename, response=response)
+        with open(filepath, 'rb') as f:
+            files = {'image': (filename, f.read(), 'image/jpeg')}
+            r = requests.post(f"{KAGGLE_GPU_URL}/api/process_image", files=files, headers=NGROK_HEADERS)
+        
+        data = r.json()
+        response = data['response']
+        # Point the frontend to the image generated on Kaggle
+        display_url = f"{KAGGLE_GPU_URL}/api/detections/{filename}"
+        return render_template("shot_detection.html", display_detection=display_url, fname=filename, response=response)
 
 @app.route('/basketball_detection', methods=['GET', 'POST'])
 def upload_image():
     if request.method == 'POST':
-        response = []
         f = request.files['image']
-        # create a secure filename
         filename = secure_filename(f.filename)
-        print("filename", filename)
-        # save file to /static/uploads
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print("filepath", filepath)
-        f.save(filepath)
-        get_image(filepath, filename, response)
-        return render_template("shot_detection.html", display_detection=filename, fname=filename, response=response)
+        files = {'image': (filename, f.read(), f.mimetype)}
+        r = requests.post(f"{KAGGLE_GPU_URL}/api/process_image", files=files, headers=NGROK_HEADERS)
+        
+        data = r.json()
+        response = data['response']
+        display_url = f"{KAGGLE_GPU_URL}/api/detections/{filename}"
+        return render_template("shot_detection.html", display_detection=display_url, fname=filename, response=response)
 
 @app.route('/sample_analysis', methods=['GET', 'POST'])
 def upload_video():
-    global shooting_result
-    shooting_result['attempts'] = 0
-    shooting_result['made'] = 0
-    shooting_result['miss'] = 0
-    if (os.path.exists("./static/detections/trajectory_fitting.jpg")):
-        os.remove("./static/detections/trajectory_fitting.jpg")
     if request.method == 'POST':
         filename = "sample_video.mp4"
-        print("filename", filename)
         filepath = "./static/uploads/sample_video.mp4"
-        print("filepath", filepath)
-        session['video_path'] = filepath
+        with open(filepath, 'rb') as f:
+            files = {'video': (filename, f.read(), 'video/mp4')}
+            r = requests.post(f"{KAGGLE_GPU_URL}/api/upload_video", files=files, headers=NGROK_HEADERS)
+        session['video_path'] = r.json()['video_path']
         return render_template("shooting_analysis.html")
 
 @app.route('/shooting_analysis', methods=['GET', 'POST'])
 def upload_sample_video():
-    global shooting_result
-    shooting_result['attempts'] = 0
-    shooting_result['made'] = 0
-    shooting_result['miss'] = 0
-    if (os.path.exists("./static/detections/trajectory_fitting.jpg")):
-        os.remove("./static/detections/trajectory_fitting.jpg")
     if request.method == 'POST':
         f = request.files['video']
-        # create a secure filename
         filename = secure_filename(f.filename)
-        print("filename", filename)
-        # save file to /static/uploads
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print("filepath", filepath)
-        f.save(filepath)
-        session['video_path'] = filepath
+        files = {'video': (filename, f.read(), f.mimetype)}
+        r = requests.post(f"{KAGGLE_GPU_URL}/api/upload_video", files=files, headers=NGROK_HEADERS)
+        session['video_path'] = r.json()['video_path']
         return render_template("shooting_analysis.html")
 
 @app.route('/video_feed')
 def video_feed():
     video_path = session.get('video_path', None)
-    stream = getVideoStream(video_path)
-    return Response(stream,
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    # Stream the multipart frames directly from Kaggle GPU
+    req = requests.get(f"{KAGGLE_GPU_URL}/api/video_feed", params={'video_path': video_path}, stream=True, headers=NGROK_HEADERS)
+    return Response(req.iter_content(chunk_size=1024), content_type=req.headers.get('Content-Type', 'text/plain'))
 
 @app.route("/result", methods=['GET', 'POST'])
 def result():
-    return render_template("result.html", shooting_result=shooting_result)
+    r = requests.get(f"{KAGGLE_GPU_URL}/api/shooting_result", headers=NGROK_HEADERS)
+    return render_template("result.html", shooting_result=r.json(), KAGGLE_GPU_URL=KAGGLE_GPU_URL)
 
 #disable caching
 @app.after_request
@@ -121,4 +104,5 @@ def after_request(response):
     return response
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=True)
+    app.run(host='127.0.0.1', port=5000, debug=True, use_reloader=True)
+

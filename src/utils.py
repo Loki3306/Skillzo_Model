@@ -130,7 +130,8 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
 
     # getting openpose keypoints
     datum.cvInputData = frame
-    opWrapper.emplaceAndPop([datum])
+    import pyopenpose as op
+    opWrapper.emplaceAndPop(op.VectorDatum([datum]))
     try:
         headX, headY, headConf = datum.poseKeypoints[0][0]
         handX, handY, handConf = datum.poseKeypoints[0][4]
@@ -172,6 +173,8 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
             yCoor = int(np.mean([ymin, ymax]))
             # Basketball (not head)
             if(classes[0][i] == 1 and (distance([headX, headY], [xCoor, yCoor]) > 30)):
+                if 'frame_data' not in shooting_result: shooting_result['frame_data'] = []
+                shooting_result['frame_data'].append({"ball_x": float(xCoor), "ball_y": float(yCoor), "elbow_angle": float(elbowAngle), "knee_angle": float(kneeAngle)})
 
                 # recording shooting pose
                 if(distance([xCoor, yCoor], [handX, handY]) < 120):

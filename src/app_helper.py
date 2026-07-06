@@ -71,6 +71,10 @@ def getVideoStream(video_path):
                                         num_detections, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose)
 
             detection = cv2.resize(detection, (0, 0), fx=0.83, fy=0.83)
+            if 'out_writer' not in shot_result:
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                shot_result['out_writer'] = cv2.VideoWriter('./static/detections/raw_output.mp4', fourcc, fps / 4.0, (detection.shape[1], detection.shape[0]))
+            shot_result['out_writer'].write(detection)
             frame = cv2.imencode('.jpg', detection)[1].tobytes()
             result = (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             yield result
@@ -95,6 +99,9 @@ def getVideoStream(video_path):
     fig.clear()
     trace_path = os.path.join(os.getcwd(), "static/detections/basketball_trace.jpg")
     cv2.imwrite(trace_path, trace)
+    if 'out_writer' in shot_result and shot_result['out_writer'] is not None:
+        shot_result['out_writer'].release()
+        os.system("ffmpeg -y -i ./static/detections/raw_output.mp4 -vcodec libx264 ./static/detections/final_output.mp4")
 
 def get_image(image_path, img_name, response):
     output_path = './static/detections/'

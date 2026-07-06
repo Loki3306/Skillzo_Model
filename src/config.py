@@ -5,5 +5,6 @@ shooting_result = {
     'avg_elbow_angle': 0,
     'avg_knee_angle': 0,
     'avg_release_angle': 0,
-    'avg_ballInHand_time': 0
+    'avg_ballInHand_time': 0,
+    'frame_data': []
 }
