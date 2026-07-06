@@ -261,6 +261,20 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                         # reset all variables
                         trajectory_fit(
                             during_shooting['balls_during_shooting'], height, width, shot_result['judgement'], fig)
+                        
+                        if 'shots' not in shooting_result:
+                            shooting_result['shots'] = []
+                        
+                        shooting_result['shots'].append({
+                            'result': shot_result['judgement'],
+                            'release_angle': during_shooting['release_angle_list'][-1] if during_shooting['release_angle_list'] else 0,
+                            'elbow_angle': shooting_pose['elbow_angle'],
+                            'knee_angle': shooting_pose['knee_angle'],
+                            'ballInHand_frames': shooting_pose['ballInHand_frames'],
+                            'trajectory': list(during_shooting['balls_during_shooting']),
+                            'hoop_bbox': previous['hoop']
+                        })
+
                         during_shooting['balls_during_shooting'].clear()
                         during_shooting['isShooting'] = False
                         shooting_pose['ballInHand_frames_list'].append(
