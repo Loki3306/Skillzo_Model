@@ -26,6 +26,7 @@ def getVideoStream(video_path):
         'avg_release_angle': 0,
         'avg_ballInHand_time': 0,
         'frame_data': [],
+        'shots': []
     })
     
     datum, opWrapper = openpose_init()

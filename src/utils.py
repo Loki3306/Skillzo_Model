@@ -60,6 +60,8 @@ def openpose_init():
     # Custom Params (refer to include/openpose/flags.hpp for more parameters)
     params = dict()
     params["model_folder"] = "./OpenPose/models"
+    params["num_gpu"] = 1
+    params["num_gpu_start"] = 0
 
     # Starting OpenPose
     opWrapper = op.WrapperPython()
@@ -176,7 +178,7 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                     (during_shooting['release_point'][0] - 80, during_shooting['release_point'][1] + 80), cv2.FONT_HERSHEY_COMPLEX, 1.3, (102, 255, 255), 3)
 
     for i, box in enumerate(boxes[0]):
-        if (scores[0][i] > 0.5):
+        if (scores[0][i] > 0.2):
             ymin = int((box[0] * height))
             xmin = int((box[1] * width))
             ymax = int((box[2] * height))
@@ -346,7 +348,7 @@ def detect_image(img, response):
 
         for i, box in enumerate(boxes[0]):
             # print("detect")
-            if (scores[0][i] > 0.5):
+            if (scores[0][i] > 0.2):
                 valid_detections += 1
                 ymin = int((box[0] * height))
                 xmin = int((box[1] * width))
@@ -411,7 +413,7 @@ def detect_API(response, img):
             feed_dict={image_tensor: img_expanded})
 
         for i, box in enumerate(boxes[0]):
-            if (scores[0][i] > 0.5):
+            if (scores[0][i] > 0.2):
                 ymin = int((box[0] * height))
                 xmin = int((box[1] * width))
                 ymax = int((box[2] * height))
