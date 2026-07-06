@@ -25,7 +25,7 @@ def handle_video():
 @app.route('/api/video_feed')
 def video_feed():
     stream = getVideoStream(request.args.get('video_path'))
-    return Response(stream, mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(stream, mimetype='multipart/x-mixed-replace; boundary=frame', headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 @app.route('/api/shooting_result')
 def get_shooting_result():
