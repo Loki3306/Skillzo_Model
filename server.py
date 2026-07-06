@@ -27,6 +27,13 @@ def video_feed():
     stream = getVideoStream(request.args.get('video_path'))
     return Response(stream, mimetype='multipart/x-mixed-replace; boundary=frame', headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
+@app.route('/api/process_video_fast')
+def process_video_fast():
+    stream = getVideoStream(request.args.get('video_path'))
+    for _ in stream:
+        pass
+    return jsonify({"status": "done"})
+
 @app.route('/api/shooting_result')
 def get_shooting_result():
     return jsonify(convert_numpy(shooting_result))
