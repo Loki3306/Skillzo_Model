@@ -16,6 +16,18 @@ from statistics import mean
 tf.disable_v2_behavior()
 
 def getVideoStream(video_path):
+    global shooting_result
+    shooting_result.update({
+        'attempts': 0,
+        'made': 0,
+        'miss': 0,
+        'avg_elbow_angle': 0,
+        'avg_knee_angle': 0,
+        'avg_release_angle': 0,
+        'avg_ballInHand_time': 0,
+        'frame_data': [],
+    })
+    
     datum, opWrapper = openpose_init()
     detection_graph, image_tensor, boxes, scores, classes, num_detections = tensorflow_init()
 
@@ -81,10 +93,10 @@ def getVideoStream(video_path):
 
 
     # getting average shooting angle
-    shooting_result['avg_elbow_angle'] = round(mean(shooting_pose['elbow_angle_list']), 2)
-    shooting_result['avg_knee_angle'] = round(mean(shooting_pose['knee_angle_list']), 2)
-    shooting_result['avg_release_angle'] = round(mean(during_shooting['release_angle_list']), 2)
-    shooting_result['avg_ballInHand_time'] = round(mean(shooting_pose['ballInHand_frames_list']) * (4 / fps), 2)
+    shooting_result['avg_elbow_angle'] = round(mean(shooting_pose['elbow_angle_list']) if shooting_pose['elbow_angle_list'] else 0, 2)
+    shooting_result['avg_knee_angle'] = round(mean(shooting_pose['knee_angle_list']) if shooting_pose['knee_angle_list'] else 0, 2)
+    shooting_result['avg_release_angle'] = round(mean(during_shooting['release_angle_list']) if during_shooting['release_angle_list'] else 0, 2)
+    shooting_result['avg_ballInHand_time'] = round((mean(shooting_pose['ballInHand_frames_list']) if shooting_pose['ballInHand_frames_list'] else 0) * (4 / fps), 2)
 
     print("avg", shooting_result['avg_elbow_angle'])
     print("avg", shooting_result['avg_knee_angle'])
