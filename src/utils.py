@@ -308,37 +308,43 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                 else:
                     shooting_pose['ball_in_hand'] = False
 
-                # Start tracking new shot if ascending and NOT cooling down
-                if(previous['ball'][1] >= yCoor):
+                # Start tracking new shot if above hoop and NOT cooling down
+                if(ymin < previous['hoop_height']):
                     if(not during_shooting['isShooting']):
                         if during_shooting['cooldown_frames'] == 0 and not during_shooting['awaiting_rebound']:
                             during_shooting['isShooting'] = True
+                            during_shooting['balls_during_shooting'].clear()
 
-                    during_shooting['balls_during_shooting'].append(
-                        [xCoor, yCoor])
+                    # Only append if close to the last tracked point (prevent tracking noise)
+                    last_pt = during_shooting['balls_during_shooting'][-1] if len(during_shooting['balls_during_shooting']) > 0 else previous['ball']
+                    if not during_shooting['isShooting'] or distance([xCoor, yCoor], last_pt) < 150:
+                        during_shooting['balls_during_shooting'].append([xCoor, yCoor])
 
-                    #calculating release angle
-                    if(len(during_shooting['balls_during_shooting']) == 2):
-                        first_shooting_point = during_shooting['balls_during_shooting'][0]
-                        release_angle = calculateAngle(np.array(during_shooting['balls_during_shooting'][1]), np.array(
-                            first_shooting_point), np.array([first_shooting_point[0] + 1, first_shooting_point[1]]))
-                        if(release_angle > 90):
-                            release_angle = 180 - release_angle
-                        during_shooting['release_angle_list'].append(
-                            release_angle)
-                        during_shooting['release_point'] = first_shooting_point
-                        shot_result['release_displayFrames'] = 30
-                        print("release angle:", release_angle)
+                        #calculating release angle
+                        if(len(during_shooting['balls_during_shooting']) == 2):
+                            first_shooting_point = during_shooting['balls_during_shooting'][0]
+                            release_angle = calculateAngle(np.array(during_shooting['balls_during_shooting'][1]), np.array(
+                                first_shooting_point), np.array([first_shooting_point[0] + 1, first_shooting_point[1]]))
+                            if(release_angle > 90):
+                                release_angle = 180 - release_angle
+                            during_shooting['release_angle_list'].append(
+                                release_angle)
+                            during_shooting['release_point'] = first_shooting_point
+                            shot_result['release_displayFrames'] = 30
+                            print("release angle:", release_angle)
 
                     # ── Ball-in-flight: orange glow dot ──────────────────
                     skz_glow_circle(frame, (xCoor, yCoor), 8, SKZ_ORANGE, thickness=-1)
                     skz_glow_circle(trace, (xCoor, yCoor), 8, SKZ_ORANGE, thickness=-1)
 
-                # Not shooting
-                elif(ymin >= (previous['hoop_height'] - 30) and (distance([xCoor, yCoor], previous['ball']) < 100)):
+                # Not shooting (below hoop)
+                elif(ymin >= (previous['hoop_height'] - 30)):
                     # the moment when ball go below basket
-                    if(during_shooting['isShooting']):
-                        if(xCoor >= previous['hoop'][0] and xCoor <= previous['hoop'][2]):  # shot
+                    if(during_shooting['isShooting'] and len(during_shooting['balls_during_shooting']) > 0):
+                        # Ensure this ball is actually the one we were tracking!
+                        last_pt = during_shooting['balls_during_shooting'][-1]
+                        if distance([xCoor, yCoor], last_pt) < 150:
+                            if(xCoor >= previous['hoop'][0] and xCoor <= previous['hoop'][2]):  # shot
                             shooting_result['attempts'] += 1
                             shooting_result['made'] += 1
                             shot_result['displayFrames'] = 10
