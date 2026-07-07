@@ -13,6 +13,91 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 tf.disable_v2_behavior()
 
+# ─── Skillzo Brand Palette (BGR) ───────────────────────────────────────────
+SKZ_ORANGE   = (0,   107, 255)   # #FF6B00  — primary accent
+SKZ_WHITE    = (255, 255, 255)
+SKZ_BLACK    = (0,   0,   0)
+SKZ_DARK     = (20,  20,  20)    # near-black for badge backgrounds
+SKZ_GREEN    = (80,  200, 80)    # made shots
+SKZ_RED      = (60,  60,  220)   # missed shots (BGR: red)
+SKZ_CYAN     = (220, 220, 60)    # release angle highlight
+SKZ_ALPHA    = 0.65              # overlay transparency
+SKZ_FONT     = cv2.FONT_HERSHEY_DUPLEX
+
+def skz_pill(frame, text, origin, font_scale=0.65, thickness=1,
+              txt_color=SKZ_WHITE, bg_color=SKZ_DARK, accent=SKZ_ORANGE):
+    """Draw a pill-shaped badge with a left accent bar."""
+    x, y = origin
+    (tw, th), baseline = cv2.getTextSize(text, SKZ_FONT, font_scale, thickness)
+    pad_x, pad_y = 10, 6
+    bar_w = 4
+
+    # Semi-transparent background
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x, y - th - pad_y),
+                  (x + tw + pad_x * 2 + bar_w, y + baseline + pad_y),
+                  bg_color, -1)
+    cv2.addWeighted(overlay, SKZ_ALPHA, frame, 1 - SKZ_ALPHA, 0, frame)
+
+    # Left accent bar
+    cv2.rectangle(frame, (x, y - th - pad_y),
+                  (x + bar_w, y + baseline + pad_y), accent, -1)
+
+    # Text
+    cv2.putText(frame, text, (x + bar_w + pad_x, y),
+                SKZ_FONT, font_scale, txt_color, thickness, cv2.LINE_AA)
+
+
+def skz_hud(frame, made, attempts):
+    """Render a top-left scoreboard showing live Skillzo branding + score."""
+    h, w = frame.shape[:2]
+    bx, by, bw, bh = 12, 12, 210, 74
+
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (bx, by), (bx + bw, by + bh), SKZ_DARK, -1)
+    cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+
+    # Top orange stripe
+    cv2.rectangle(frame, (bx, by), (bx + bw, by + 4), SKZ_ORANGE, -1)
+
+    # Brand name
+    cv2.putText(frame, "SKILLZO AI", (bx + 10, by + 22),
+                SKZ_FONT, 0.5, SKZ_ORANGE, 1, cv2.LINE_AA)
+
+    # Score
+    score_str = f"{made}/{attempts}"
+    cv2.putText(frame, score_str, (bx + 10, by + 56),
+                SKZ_FONT, 1.3, SKZ_WHITE, 2, cv2.LINE_AA)
+    cv2.putText(frame, "MADE", (bx + 10 + len(score_str) * 18 + 8, by + 56),
+                SKZ_FONT, 0.45, (180, 180, 180), 1, cv2.LINE_AA)
+
+
+def skz_glow_circle(frame, center, radius, color, thickness=-1):
+    """Draw a circle with a subtle glow ring around it."""
+    glow_color = tuple(min(int(c * 1.4), 255) for c in color)
+    cv2.circle(frame, center, radius + 5, glow_color, 2, cv2.LINE_AA)
+    cv2.circle(frame, center, radius, color, thickness, cv2.LINE_AA)
+    if thickness == -1:
+        cv2.circle(frame, center, max(radius - 4, 2), SKZ_WHITE, 2, cv2.LINE_AA)
+
+
+def skz_judgement(frame, text, center_x, center_y):
+    """Large animated-style SCORE / MISS judgement overlay."""
+    color  = SKZ_GREEN if text == "SCORE" else SKZ_RED
+    label  = "● " + text
+    scale  = 2.2
+    thick  = 5
+    (tw, th), _ = cv2.getTextSize(label, SKZ_FONT, scale, thick)
+    tx = max(center_x - tw // 2, 4)
+    ty = max(center_y - 80, th + 4)
+
+    # Shadow
+    cv2.putText(frame, label, (tx + 3, ty + 3),
+                SKZ_FONT, scale, SKZ_BLACK, thick + 2, cv2.LINE_AA)
+    # Main text
+    cv2.putText(frame, label, (tx, ty),
+                SKZ_FONT, scale, color, thick, cv2.LINE_AA)
+
 _cached_tf_session_vars = None
 _cached_op_wrapper = None
 _cached_op_datum = None
@@ -167,15 +252,24 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
         [boxes, scores, classes, num_detections],
         feed_dict={image_tensor: frame_expanded})
 
-    # displaying openpose, joint angle and release angle
+    # ─── Skillzo overlay: stat badges + HUD ───────────────────────────────
     frame = datum.cvOutputData
-    cv2.putText(frame, 'Elbow: ' + str(elbowAngle) + ' deg',
-                (elbowCoord[0] + 65, elbowCoord[1]), cv2.FONT_HERSHEY_COMPLEX, 1.3, (102, 255, 0), 3)
-    cv2.putText(frame, 'Knee: ' + str(kneeAngle) + ' deg',
-                (kneeCoord[0] + 65, kneeCoord[1]), cv2.FONT_HERSHEY_COMPLEX, 1.3, (102, 255, 0), 3)
-    if(shot_result['release_displayFrames']):
-        cv2.putText(frame, 'Release: ' + str(during_shooting['release_angle_list'][-1]) + ' deg',
-                    (during_shooting['release_point'][0] - 80, during_shooting['release_point'][1] + 80), cv2.FONT_HERSHEY_COMPLEX, 1.3, (102, 255, 255), 3)
+
+    # Joint angle pill badges anchored to the joint positions
+    skz_pill(frame, f'ELBOW  {elbowAngle:.1f}deg',
+             (elbowCoord[0] + 18, elbowCoord[1]), accent=SKZ_ORANGE)
+    skz_pill(frame, f'KNEE   {kneeAngle:.1f}deg',
+             (kneeCoord[0] + 18, kneeCoord[1]), accent=SKZ_CYAN)
+
+    # Release angle badge (shown for 30 frames after release)
+    if shot_result['release_displayFrames']:
+        rx = during_shooting['release_point'][0] - 80
+        ry = during_shooting['release_point'][1] + 90
+        skz_pill(frame, f'RELEASE  {during_shooting["release_angle_list"][-1]:.1f}deg',
+                 (max(rx, 4), max(ry, 24)), font_scale=0.7, accent=SKZ_CYAN)
+
+    # Live scoreboard HUD
+    skz_hud(frame, shooting_result.get('made', 0), shooting_result.get('attempts', 0))
 
     for i, box in enumerate(boxes[0]):
         if (scores[0][i] > 0.2):
@@ -221,11 +315,9 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                         shot_result['release_displayFrames'] = 30
                         print("release angle:", release_angle)
 
-                    #draw purple circle
-                    cv2.circle(img=frame, center=(xCoor, yCoor), radius=7,
-                               color=(235, 103, 193), thickness=3)
-                    cv2.circle(img=trace, center=(xCoor, yCoor), radius=7,
-                               color=(235, 103, 193), thickness=3)
+                    # ── Ball-in-flight: orange glow dot ──────────────────
+                    skz_glow_circle(frame, (xCoor, yCoor), 8, SKZ_ORANGE, thickness=-1)
+                    skz_glow_circle(trace, (xCoor, yCoor), 8, SKZ_ORANGE, thickness=-1)
 
                 # Not shooting
                 elif(ymin >= (previous['hoop_height'] - 30) and (distance([xCoor, yCoor], previous['ball']) < 100)):
@@ -237,28 +329,30 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                             shot_result['displayFrames'] = 10
                             shot_result['judgement'] = "SCORE"
                             print("SCORE")
-                            # draw green trace when miss
+                            # ── SCORE trace: bright green thick line + dots ──
                             points = np.asarray(
                                 during_shooting['balls_during_shooting'], dtype=np.int32)
-                            cv2.polylines(trace, [points], False, color=(
-                                82, 168, 50), thickness=2, lineType=cv2.LINE_AA)
+                            cv2.polylines(trace, [points], False,
+                                          color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                            cv2.polylines(trace, [points], False,
+                                          color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
                             for ballCoor in during_shooting['balls_during_shooting']:
-                                cv2.circle(img=trace, center=(ballCoor[0], ballCoor[1]), radius=10,
-                                           color=(82, 168, 50), thickness=-1)
+                                skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_GREEN, -1)
                         else:  # miss
                             shooting_result['attempts'] += 1
                             shooting_result['miss'] += 1
                             shot_result['displayFrames'] = 10
                             shot_result['judgement'] = "MISS"
                             print("miss")
-                            # draw red trace when miss
+                            # ── MISS trace: red thick line + dots ────────────
                             points = np.asarray(
                                 during_shooting['balls_during_shooting'], dtype=np.int32)
-                            cv2.polylines(trace, [points], color=(
-                                0, 0, 255), isClosed=False, thickness=2, lineType=cv2.LINE_AA)
+                            cv2.polylines(trace, [points], False,
+                                          color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                            cv2.polylines(trace, [points], False,
+                                          color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
                             for ballCoor in during_shooting['balls_during_shooting']:
-                                cv2.circle(img=trace, center=(ballCoor[0], ballCoor[1]), radius=10,
-                                           color=(0, 0, 255), thickness=-1)
+                                skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_RED, -1)
 
                         # reset all variables
                         trajectory_fit(
@@ -294,32 +388,27 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                         shooting_pose['elbow_angle'] = 370
                         shooting_pose['knee_angle'] = 370
 
-                    #draw blue circle
-                    cv2.circle(img=frame, center=(xCoor, yCoor), radius=10,
-                               color=(255, 0, 0), thickness=-1)
-                    cv2.circle(img=trace, center=(xCoor, yCoor), radius=10,
-                               color=(255, 0, 0), thickness=-1)
+                    # ── Ball at rest: white-center orange dot ─────────────
+                    skz_glow_circle(frame, (xCoor, yCoor), 10, SKZ_ORANGE, thickness=-1)
+                    skz_glow_circle(trace, (xCoor, yCoor), 10, SKZ_ORANGE, thickness=-1)
 
                 previous['ball'][0] = xCoor
                 previous['ball'][1] = yCoor
 
             if(classes[0][i] == 2):  # Rim
-                # cover previous hoop with white rectangle
+                # ── Hoop box: clear old, draw new in Skillzo orange ───────
                 cv2.rectangle(
-                    trace, (previous['hoop'][0], previous['hoop'][1]), (previous['hoop'][2], previous['hoop'][3]), (255, 255, 255), 5)
-                cv2.rectangle(frame, (xmin, ymax),
-                              (xmax, ymin), (48, 124, 255), 5)
-                cv2.rectangle(trace, (xmin, ymax),
-                              (xmax, ymin), (48, 124, 255), 5)
+                    trace, (previous['hoop'][0], previous['hoop'][1]),
+                    (previous['hoop'][2], previous['hoop'][3]), SKZ_WHITE, 5)
+                # Orange hoop rectangle with rounded feel (double-draw trick)
+                cv2.rectangle(frame, (xmin, ymax), (xmax, ymin), SKZ_DARK, 8)
+                cv2.rectangle(frame, (xmin, ymax), (xmax, ymin), SKZ_ORANGE, 3)
+                cv2.rectangle(trace, (xmin, ymax), (xmax, ymin), SKZ_DARK, 8)
+                cv2.rectangle(trace, (xmin, ymax), (xmax, ymin), SKZ_ORANGE, 3)
 
-                #display judgement after shot
-                if(shot_result['displayFrames']):
-                    if(shot_result['judgement'] == "MISS"):
-                        cv2.putText(frame, shot_result['judgement'], (xCoor - 65, yCoor - 65),
-                                    cv2.FONT_HERSHEY_COMPLEX, 3, (0, 0, 255), 8)
-                    else:
-                        cv2.putText(frame, shot_result['judgement'], (xCoor - 65, yCoor - 65),
-                                    cv2.FONT_HERSHEY_COMPLEX, 3, (82, 168, 50), 8)
+                # ── Judgement overlay ─────────────────────────────────────
+                if shot_result['displayFrames']:
+                    skz_judgement(frame, shot_result['judgement'], xCoor, yCoor)
 
                 previous['hoop'][0] = xmin
                 previous['hoop'][1] = ymax
@@ -357,10 +446,8 @@ def detect_image(img, response):
                 xCoor = int(np.mean([xmin, xmax]))
                 yCoor = int(np.mean([ymin, ymax]))
                 if(classes[0][i] == 1):  # basketball
-                    cv2.circle(img=img, center=(xCoor, yCoor), radius=25,
-                               color=(255, 0, 0), thickness=-1)
-                    cv2.putText(img, "BALL", (xCoor - 50, yCoor - 50),
-                                cv2.FONT_HERSHEY_COMPLEX, 3, (255, 0, 0), 8)
+                    skz_glow_circle(img, (xCoor, yCoor), 25, SKZ_ORANGE, -1)
+                    skz_pill(img, "BALL", (xCoor - 30, yCoor - 38), font_scale=0.7, accent=SKZ_ORANGE)
                     print("add basketball")
                     response.append({
                         'class': 'Basketball',
@@ -371,10 +458,9 @@ def detect_image(img, response):
                         }
                     })
                 if(classes[0][i] == 2):  # Rim
-                    cv2.rectangle(img, (xmin, ymax),
-                                  (xmax, ymin), (48, 124, 255), 10)
-                    cv2.putText(img, "HOOP", (xCoor - 65, yCoor - 65),
-                                cv2.FONT_HERSHEY_COMPLEX, 3, (48, 124, 255), 8)
+                    cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_DARK, 12)
+                    cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_ORANGE, 4)
+                    skz_pill(img, "HOOP", (xCoor - 30, yCoor - 50), font_scale=0.7, accent=SKZ_ORANGE)
                     print("add hoop")
                     response.append({
                         'class': 'Hoop',
