@@ -338,6 +338,18 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                                           color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
                             for ballCoor in during_shooting['balls_during_shooting']:
                                 skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_GREEN, -1)
+                                
+                            # ── Save clean shot image ──
+                            os.makedirs('./static/detections/shots', exist_ok=True)
+                            shot_img = np.full((height, width, 3), 255, np.uint8)
+                            if 'hoop' in previous:
+                                cv2.rectangle(shot_img, (previous['hoop'][0], previous['hoop'][1]), (previous['hoop'][2], previous['hoop'][3]), SKZ_DARK, 8)
+                                cv2.rectangle(shot_img, (previous['hoop'][0], previous['hoop'][1]), (previous['hoop'][2], previous['hoop'][3]), SKZ_ORANGE, 3)
+                            cv2.polylines(shot_img, [points], False, color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                            cv2.polylines(shot_img, [points], False, color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
+                            for ballCoor in during_shooting['balls_during_shooting']:
+                                skz_glow_circle(shot_img, (ballCoor[0], ballCoor[1]), 7, SKZ_GREEN, -1)
+                            cv2.imwrite(f'./static/detections/shots/shot_{shooting_result["attempts"]}.jpg', shot_img)
                         else:  # miss
                             shooting_result['attempts'] += 1
                             shooting_result['miss'] += 1
@@ -353,6 +365,18 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                                           color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
                             for ballCoor in during_shooting['balls_during_shooting']:
                                 skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_RED, -1)
+                                
+                            # ── Save clean shot image ──
+                            os.makedirs('./static/detections/shots', exist_ok=True)
+                            shot_img = np.full((height, width, 3), 255, np.uint8)
+                            if 'hoop' in previous:
+                                cv2.rectangle(shot_img, (previous['hoop'][0], previous['hoop'][1]), (previous['hoop'][2], previous['hoop'][3]), SKZ_DARK, 8)
+                                cv2.rectangle(shot_img, (previous['hoop'][0], previous['hoop'][1]), (previous['hoop'][2], previous['hoop'][3]), SKZ_ORANGE, 3)
+                            cv2.polylines(shot_img, [points], False, color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                            cv2.polylines(shot_img, [points], False, color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
+                            for ballCoor in during_shooting['balls_during_shooting']:
+                                skz_glow_circle(shot_img, (ballCoor[0], ballCoor[1]), 7, SKZ_RED, -1)
+                            cv2.imwrite(f'./static/detections/shots/shot_{shooting_result["attempts"]}.jpg', shot_img)
 
                         # reset all variables
                         trajectory_fit(

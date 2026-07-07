@@ -86,6 +86,14 @@ def download_processed_video():
     if not os.path.exists('./static/detections/final_output.mp4'): return "Video not finished processing", 404
     return send_file('./static/detections/final_output.mp4', mimetype='video/mp4')
 
+@app.route("/api/download_shot_image")
+def download_shot_image():
+    shot_id = request.args.get('shot_id')
+    if not shot_id: return "shot_id is required", 400
+    path = f'./static/detections/shots/shot_{shot_id}.jpg'
+    if not os.path.exists(path): return "Shot image not found", 404
+    return send_file(path, mimetype='image/jpeg')
+
 from src.app_helper import get_image, detectionAPI
 
 @app.route('/api/process_image', methods=['POST'])
