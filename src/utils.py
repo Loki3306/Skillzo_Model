@@ -218,6 +218,14 @@ def getAngleFromDatum(datum):
 
 def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, classes, num_detections, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose):
     global shooting_result
+    
+    if 'cooldown_frames' not in during_shooting:
+        during_shooting['cooldown_frames'] = 0
+    if 'awaiting_rebound' not in during_shooting:
+        during_shooting['awaiting_rebound'] = False
+        
+    if during_shooting['cooldown_frames'] > 0:
+        during_shooting['cooldown_frames'] -= 1
 
     if(shot_result['displayFrames'] > 0):
         shot_result['displayFrames'] -= 1
@@ -281,6 +289,12 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
             yCoor = int(np.mean([ymin, ymax]))
             # Basketball (not head)
             if(classes[0][i] == 1 and (distance([headX, headY], [xCoor, yCoor]) > 30)):
+                
+                # Altitude Reset Logic
+                if during_shooting['awaiting_rebound']:
+                    if ('hoop' in previous and yCoor > previous['hoop'][3] + 150) or (handX > 0 and distance([handX, handY], [xCoor, yCoor]) < 100):
+                        during_shooting['awaiting_rebound'] = False
+                        
                 if 'frame_data' not in shooting_result: shooting_result['frame_data'] = []
                 shooting_result['frame_data'].append({"ball_x": float(xCoor), "ball_y": float(yCoor), "elbow_angle": float(elbowAngle), "knee_angle": float(kneeAngle)})
 
@@ -294,10 +308,11 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                 else:
                     shooting_pose['ball_in_hand'] = False
 
-                # During Shooting
-                if(ymin < (previous['hoop_height'])):
+                # Start tracking new shot if ascending and NOT cooling down
+                if(previous['ball'][1] >= yCoor):
                     if(not during_shooting['isShooting']):
-                        during_shooting['isShooting'] = True
+                        if during_shooting['cooldown_frames'] == 0 and not during_shooting['awaiting_rebound']:
+                            during_shooting['isShooting'] = True
 
                     during_shooting['balls_during_shooting'].append(
                         [xCoor, yCoor])
@@ -328,6 +343,8 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                             shooting_result['made'] += 1
                             shot_result['displayFrames'] = 10
                             shot_result['judgement'] = "SCORE"
+                            during_shooting['cooldown_frames'] = 45
+                            during_shooting['awaiting_rebound'] = True
                             print("SCORE")
                             # ── SCORE trace: bright green thick line + dots ──
                             points = np.asarray(
@@ -341,7 +358,7 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                                 
                             # ── Save clean shot image ──
                             os.makedirs('./static/detections/shots', exist_ok=True)
-                            shot_img = np.full((int(height), int(width), 3), 255, np.uint8)
+                            shot_img = frame.copy()
                             if 'hoop' in previous:
                                 h_coords = [int(x) for x in previous['hoop']]
                                 cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
@@ -356,6 +373,8 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                             shooting_result['miss'] += 1
                             shot_result['displayFrames'] = 10
                             shot_result['judgement'] = "MISS"
+                            during_shooting['cooldown_frames'] = 45
+                            during_shooting['awaiting_rebound'] = True
                             print("miss")
                             # ── MISS trace: red thick line + dots ────────────
                             points = np.asarray(
@@ -369,7 +388,7 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                                 
                             # ── Save clean shot image ──
                             os.makedirs('./static/detections/shots', exist_ok=True)
-                            shot_img = np.full((int(height), int(width), 3), 255, np.uint8)
+                            shot_img = frame.copy()
                             if 'hoop' in previous:
                                 h_coords = [int(x) for x in previous['hoop']]
                                 cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
