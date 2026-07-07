@@ -48,14 +48,17 @@ def skz_pill(frame, text, origin, font_scale=0.65, thickness=1,
                 SKZ_FONT, font_scale, txt_color, thickness, cv2.LINE_AA)
 
 
-def skz_hud(frame, made, attempts):
+def skz_hud(frame, made, attempts, opaque=False):
     """Render a top-left scoreboard showing live Skillzo branding + score."""
     h, w = frame.shape[:2]
     bx, by, bw, bh = 12, 12, 210, 74
 
-    overlay = frame.copy()
-    cv2.rectangle(overlay, (bx, by), (bx + bw, by + bh), SKZ_DARK, -1)
-    cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+    if opaque:
+        cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), SKZ_DARK, -1)
+    else:
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (bx, by), (bx + bw, by + bh), SKZ_DARK, -1)
+        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
 
     # Top orange stripe
     cv2.rectangle(frame, (bx, by), (bx + bw, by + 4), SKZ_ORANGE, -1)
@@ -344,6 +347,7 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                             # ── Save clean shot image ──
                             os.makedirs('./static/detections/shots', exist_ok=True)
                             shot_img = frame.copy()
+                            skz_hud(shot_img, shooting_result.get('made', 0), shooting_result.get('attempts', 0), opaque=True)
                             if 'hoop' in previous:
                                 h_coords = [int(x) for x in previous['hoop']]
                                 cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
@@ -372,6 +376,7 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                             # ── Save clean shot image ──
                             os.makedirs('./static/detections/shots', exist_ok=True)
                             shot_img = frame.copy()
+                            skz_hud(shot_img, shooting_result.get('made', 0), shooting_result.get('attempts', 0), opaque=True)
                             if 'hoop' in previous:
                                 h_coords = [int(x) for x in previous['hoop']]
                                 cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
