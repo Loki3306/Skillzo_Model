@@ -345,65 +345,65 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                         last_pt = during_shooting['balls_during_shooting'][-1]
                         if distance([xCoor, yCoor], last_pt) < 150:
                             if(xCoor >= previous['hoop'][0] and xCoor <= previous['hoop'][2]):  # shot
-                            shooting_result['attempts'] += 1
-                            shooting_result['made'] += 1
-                            shot_result['displayFrames'] = 10
-                            shot_result['judgement'] = "SCORE"
-                            during_shooting['cooldown_frames'] = 45
-                            during_shooting['awaiting_rebound'] = True
-                            print("SCORE")
-                            # ── SCORE trace: bright green thick line + dots ──
-                            points = np.asarray(
-                                during_shooting['balls_during_shooting'], dtype=np.int32)
-                            cv2.polylines(trace, [points], False,
-                                          color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
-                            cv2.polylines(trace, [points], False,
-                                          color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
-                            for ballCoor in during_shooting['balls_during_shooting']:
-                                skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_GREEN, -1)
-                                
-                            # ── Save clean shot image ──
-                            os.makedirs('./static/detections/shots', exist_ok=True)
-                            shot_img = frame.copy()
-                            if 'hoop' in previous:
-                                h_coords = [int(x) for x in previous['hoop']]
-                                cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
-                                cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_ORANGE, 3)
-                            cv2.polylines(shot_img, [points], False, color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
-                            cv2.polylines(shot_img, [points], False, color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
-                            for ballCoor in during_shooting['balls_during_shooting']:
-                                skz_glow_circle(shot_img, (int(ballCoor[0]), int(ballCoor[1])), 7, SKZ_GREEN, -1)
-                            cv2.imwrite(f'./static/detections/shots/shot_{shooting_result["attempts"]}.jpg', shot_img)
-                        else:  # miss
-                            shooting_result['attempts'] += 1
-                            shooting_result['miss'] += 1
-                            shot_result['displayFrames'] = 10
-                            shot_result['judgement'] = "MISS"
-                            during_shooting['cooldown_frames'] = 45
-                            during_shooting['awaiting_rebound'] = True
-                            print("miss")
-                            # ── MISS trace: red thick line + dots ────────────
-                            points = np.asarray(
-                                during_shooting['balls_during_shooting'], dtype=np.int32)
-                            cv2.polylines(trace, [points], False,
-                                          color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
-                            cv2.polylines(trace, [points], False,
-                                          color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
-                            for ballCoor in during_shooting['balls_during_shooting']:
-                                skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_RED, -1)
-                                
-                            # ── Save clean shot image ──
-                            os.makedirs('./static/detections/shots', exist_ok=True)
-                            shot_img = frame.copy()
-                            if 'hoop' in previous:
-                                h_coords = [int(x) for x in previous['hoop']]
-                                cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
-                                cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_ORANGE, 3)
-                            cv2.polylines(shot_img, [points], False, color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
-                            cv2.polylines(shot_img, [points], False, color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
-                            for ballCoor in during_shooting['balls_during_shooting']:
-                                skz_glow_circle(shot_img, (int(ballCoor[0]), int(ballCoor[1])), 7, SKZ_RED, -1)
-                            cv2.imwrite(f'./static/detections/shots/shot_{shooting_result["attempts"]}.jpg', shot_img)
+                                shooting_result['attempts'] += 1
+                                shooting_result['made'] += 1
+                                shot_result['displayFrames'] = 10
+                                shot_result['judgement'] = "SCORE"
+                                during_shooting['cooldown_frames'] = 45
+                                during_shooting['awaiting_rebound'] = True
+                                print("SCORE")
+                                # ── SCORE trace: bright green thick line + dots ──
+                                points = np.asarray(
+                                    during_shooting['balls_during_shooting'], dtype=np.int32)
+                                cv2.polylines(trace, [points], False,
+                                              color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                                cv2.polylines(trace, [points], False,
+                                              color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
+                                for ballCoor in during_shooting['balls_during_shooting']:
+                                    skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_GREEN, -1)
+                                    
+                                # ── Save clean shot image ──
+                                os.makedirs('./static/detections/shots', exist_ok=True)
+                                shot_img = frame.copy()
+                                if 'hoop' in previous:
+                                    h_coords = [int(x) for x in previous['hoop']]
+                                    cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
+                                    cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_ORANGE, 3)
+                                cv2.polylines(shot_img, [points], False, color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                                cv2.polylines(shot_img, [points], False, color=SKZ_GREEN, thickness=2, lineType=cv2.LINE_AA)
+                                for ballCoor in during_shooting['balls_during_shooting']:
+                                    skz_glow_circle(shot_img, (int(ballCoor[0]), int(ballCoor[1])), 7, SKZ_GREEN, -1)
+                                cv2.imwrite(f'./static/detections/shots/shot_{shooting_result["attempts"]}.jpg', shot_img)
+                            else:  # miss
+                                shooting_result['attempts'] += 1
+                                shooting_result['miss'] += 1
+                                shot_result['displayFrames'] = 10
+                                shot_result['judgement'] = "MISS"
+                                during_shooting['cooldown_frames'] = 45
+                                during_shooting['awaiting_rebound'] = True
+                                print("miss")
+                                # ── MISS trace: red thick line + dots ────────────
+                                points = np.asarray(
+                                    during_shooting['balls_during_shooting'], dtype=np.int32)
+                                cv2.polylines(trace, [points], False,
+                                              color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                                cv2.polylines(trace, [points], False,
+                                              color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
+                                for ballCoor in during_shooting['balls_during_shooting']:
+                                    skz_glow_circle(trace, (ballCoor[0], ballCoor[1]), 7, SKZ_RED, -1)
+                                    
+                                # ── Save clean shot image ──
+                                os.makedirs('./static/detections/shots', exist_ok=True)
+                                shot_img = frame.copy()
+                                if 'hoop' in previous:
+                                    h_coords = [int(x) for x in previous['hoop']]
+                                    cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_DARK, 8)
+                                    cv2.rectangle(shot_img, (h_coords[0], h_coords[1]), (h_coords[2], h_coords[3]), SKZ_ORANGE, 3)
+                                cv2.polylines(shot_img, [points], False, color=SKZ_DARK, thickness=6, lineType=cv2.LINE_AA)
+                                cv2.polylines(shot_img, [points], False, color=SKZ_RED, thickness=2, lineType=cv2.LINE_AA)
+                                for ballCoor in during_shooting['balls_during_shooting']:
+                                    skz_glow_circle(shot_img, (int(ballCoor[0]), int(ballCoor[1])), 7, SKZ_RED, -1)
+                                cv2.imwrite(f'./static/detections/shots/shot_{shooting_result["attempts"]}.jpg', shot_img)
 
                         # reset all variables
                         trajectory_fit(
