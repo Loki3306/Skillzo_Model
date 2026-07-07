@@ -328,7 +328,9 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                 elif(ymin >= (previous['hoop_height'] - 30) and (distance([xCoor, yCoor], previous['ball']) < 100)):
                     # the moment when ball go below basket
                     if(during_shooting['isShooting']):
-                        if(xCoor >= previous['hoop'][0] and xCoor <= previous['hoop'][2]):  # shot
+                        hoop_width = previous['hoop'][2] - previous['hoop'][0]
+                        margin = hoop_width * 0.25 # 25% margin of error on each side
+                        if(xCoor >= (previous['hoop'][0] - margin) and xCoor <= (previous['hoop'][2] + margin)):  # shot
                             shooting_result['attempts'] += 1
                             shooting_result['made'] += 1
                             shot_result['displayFrames'] = 10
