@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, render_template, Response, request, session, jsonify, abort
+from flask import Flask, render_template, Response, request, session, jsonify, abort, render_template_string
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -13,10 +13,10 @@ app.secret_key = "super secret key"
 # PASTE YOUR NGROK URL HERE (No trailing slash)
 # e.g., KAGGLE_GPU_URL = "http://abcdef.ngrok.io"
 # =========================================================================
-KAGGLE_GPU_URL = "https://qhadw-34-34-121-231.free.pinggy.net"
+KAGGLE_GPU_URL = "https://appendix-providence-rob-mails.trycloudflare.com"
 
-# Required to bypass Ngrok's free tier browser warning screen for API requests
-NGROK_HEADERS = {"ngrok-skip-browser-warning": "true"}
+# Required to bypass Ngrok/Localtunnel's free tier browser warning screen for API requests
+NGROK_HEADERS = {"ngrok-skip-browser-warning": "true", "Bypass-Tunnel-Reminder": "true"}
 
 @app.route("/")
 def index():
@@ -63,23 +63,25 @@ def upload_image():
         return render_template("shot_detection.html", display_detection=display_url, fname=filename, response=response)
 
 @app.route('/sample_analysis', methods=['GET', 'POST'])
-def upload_video():
+def upload_sample_video():
     if request.method == 'POST':
-        filename = "sample_video.mp4"
-        filepath = "./static/uploads/sample_video.mp4"
-        with open(filepath, 'rb') as f:
-            files = {'video': (filename, f.read(), 'video/mp4')}
-            r = requests.post(f"{KAGGLE_GPU_URL}/api/upload_video", files=files, headers=NGROK_HEADERS)
-        session['video_path'] = r.json()['video_path']
+        # Bypass upload since Kaggle already has this sample file cloned
+        session['video_path'] = "./static/uploads/sample_video.mp4"
         return render_template("shooting_analysis.html")
 
 @app.route('/shooting_analysis', methods=['GET', 'POST'])
-def upload_sample_video():
+def upload_video():
     if request.method == 'POST':
         f = request.files['video']
         filename = secure_filename(f.filename)
-        files = {'video': (filename, f.read(), f.mimetype)}
-        r = requests.post(f"{KAGGLE_GPU_URL}/api/upload_video", files=files, headers=NGROK_HEADERS)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        f.save(filepath)
+        
+        # Stream the file to bypass Pinggy's strict Content-Length limit
+        with open(filepath, 'rb') as video_file:
+            files = {'video': (filename, video_file, f.mimetype)}
+            r = requests.post(f"{KAGGLE_GPU_URL}/api/upload_video", files=files, headers=NGROK_HEADERS)
+            
         session['video_path'] = r.json()['video_path']
         return render_template("shooting_analysis.html")
 
@@ -102,8 +104,33 @@ def proxy_download_processed_video():
 
 @app.route("/result", methods=['GET', 'POST'])
 def result():
-    r = requests.get(f"{KAGGLE_GPU_URL}/api/shooting_result", headers=NGROK_HEADERS)
-    return render_template("result.html", shooting_result=r.json(), KAGGLE_GPU_URL=KAGGLE_GPU_URL)
+    try:
+        # Give Kaggle 5 seconds to respond. If it's still processing the video, the Global Interpreter Lock 
+        # (GIL) will block the request and this will intentionally timeout.
+        r = requests.get(f"{KAGGLE_GPU_URL}/api/shooting_result", headers=NGROK_HEADERS, timeout=5)
+        r.raise_for_status()
+        result_data = r.json()
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.RequestException):
+        # Kaggle is busy! Render a friendly loading page that auto-refreshes.
+        return render_template_string("""
+            <html>
+                <head>
+                    <meta http-equiv="refresh" content="5">
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding-top: 100px; background-color: #F3ECE1; }
+                        .loader { border: 8px solid #f3f3f3; border-top: 8px solid #E65A5A; border-radius: 50%; width: 60px; height: 60px; animation: spin 2s linear infinite; margin: 0 auto; }
+                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    </style>
+                </head>
+                <body>
+                    <div class="loader"></div>
+                    <h2 style="color: #4A4A4A; margin-top: 30px;">AI is still analyzing your video...</h2>
+                    <p style="color: #7A7A7A;">Please leave this tab open. This page will automatically refresh every 5 seconds until it's done.</p>
+                </body>
+            </html>
+        """)
+
+    return render_template("result.html", shooting_result=result_data, KAGGLE_GPU_URL=KAGGLE_GPU_URL)
 
 #disable caching
 @app.after_request
