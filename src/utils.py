@@ -27,10 +27,15 @@ SKZ_FONT     = cv2.FONT_HERSHEY_DUPLEX
 def skz_pill(frame, text, origin, font_scale=0.65, thickness=1,
               txt_color=SKZ_WHITE, bg_color=SKZ_DARK, accent=SKZ_ORANGE):
     """Draw a pill-shaped badge with a left accent bar."""
+    h = frame.shape[0]
+    s = max(h / 720.0, 0.4)
+    fs = font_scale * s
+    thick = max(1, int(thickness * s))
+    
     x, y = origin
-    (tw, th), baseline = cv2.getTextSize(text, SKZ_FONT, font_scale, thickness)
-    pad_x, pad_y = 10, 6
-    bar_w = 4
+    (tw, th), baseline = cv2.getTextSize(text, SKZ_FONT, fs, thick)
+    pad_x, pad_y = int(10 * s), int(6 * s)
+    bar_w = int(4 * s)
 
     # Semi-transparent background
     overlay = frame.copy()
@@ -45,13 +50,14 @@ def skz_pill(frame, text, origin, font_scale=0.65, thickness=1,
 
     # Text
     cv2.putText(frame, text, (x + bar_w + pad_x, y),
-                SKZ_FONT, font_scale, txt_color, thickness, cv2.LINE_AA)
+                SKZ_FONT, fs, txt_color, thick, cv2.LINE_AA)
 
 
 def skz_hud(frame, made, attempts, opaque=False):
     """Render a top-left scoreboard showing live Skillzo branding + score."""
     h, w = frame.shape[:2]
-    bx, by, bw, bh = 12, 12, 210, 74
+    s = max(h / 720.0, 0.4)
+    bx, by, bw, bh = int(12 * s), int(12 * s), int(210 * s), int(74 * s)
 
     if opaque:
         cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), SKZ_DARK, -1)
@@ -61,42 +67,50 @@ def skz_hud(frame, made, attempts, opaque=False):
         cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
 
     # Top orange stripe
-    cv2.rectangle(frame, (bx, by), (bx + bw, by + 4), SKZ_ORANGE, -1)
+    cv2.rectangle(frame, (bx, by), (bx + bw, by + max(1, int(4 * s))), SKZ_ORANGE, -1)
 
     # Brand name
-    cv2.putText(frame, "SKILLZO AI", (bx + 10, by + 22),
-                SKZ_FONT, 0.5, SKZ_ORANGE, 1, cv2.LINE_AA)
+    cv2.putText(frame, "SKILLZO AI", (bx + int(10 * s), by + int(22 * s)),
+                SKZ_FONT, 0.5 * s, SKZ_ORANGE, max(1, int(1 * s)), cv2.LINE_AA)
 
     # Score
     score_str = f"{made}/{attempts}"
-    cv2.putText(frame, score_str, (bx + 10, by + 56),
-                SKZ_FONT, 1.3, SKZ_WHITE, 2, cv2.LINE_AA)
-    cv2.putText(frame, "MADE", (bx + 10 + len(score_str) * 18 + 8, by + 56),
-                SKZ_FONT, 0.45, (180, 180, 180), 1, cv2.LINE_AA)
+    cv2.putText(frame, score_str, (bx + int(10 * s), by + int(56 * s)),
+                SKZ_FONT, 1.3 * s, SKZ_WHITE, max(1, int(2 * s)), cv2.LINE_AA)
+    # Estimate width of score text dynamically for the 'MADE' placement
+    (sw, _), _ = cv2.getTextSize(score_str, SKZ_FONT, 1.3 * s, max(1, int(2 * s)))
+    cv2.putText(frame, "MADE", (bx + int(10 * s) + sw + int(8 * s), by + int(56 * s)),
+                SKZ_FONT, 0.45 * s, (180, 180, 180), max(1, int(1 * s)), cv2.LINE_AA)
 
 
 def skz_glow_circle(frame, center, radius, color, thickness=-1):
     """Draw a circle with a subtle glow ring around it."""
+    h = frame.shape[0]
+    s = max(h / 720.0, 0.4)
+    r = int(radius * s)
     glow_color = tuple(min(int(c * 1.4), 255) for c in color)
-    cv2.circle(frame, center, radius + 5, glow_color, 2, cv2.LINE_AA)
-    cv2.circle(frame, center, radius, color, thickness, cv2.LINE_AA)
+    cv2.circle(frame, center, r + int(5 * s), glow_color, max(1, int(2 * s)), cv2.LINE_AA)
+    t = thickness if thickness == -1 else max(1, int(thickness * s))
+    cv2.circle(frame, center, r, color, t, cv2.LINE_AA)
     if thickness == -1:
-        cv2.circle(frame, center, max(radius - 4, 2), SKZ_WHITE, 2, cv2.LINE_AA)
+        cv2.circle(frame, center, max(r - int(4 * s), 2), SKZ_WHITE, max(1, int(2 * s)), cv2.LINE_AA)
 
 
 def skz_judgement(frame, text, center_x, center_y):
     """Large animated-style SCORE / MISS judgement overlay."""
+    h = frame.shape[0]
+    s = max(h / 720.0, 0.4)
     color  = SKZ_GREEN if text == "SCORE" else SKZ_RED
     label  = "● " + text
-    scale  = 2.2
-    thick  = 5
+    scale  = 2.2 * s
+    thick  = max(1, int(5 * s))
     (tw, th), _ = cv2.getTextSize(label, SKZ_FONT, scale, thick)
     tx = max(center_x - tw // 2, 4)
-    ty = max(center_y - 80, th + 4)
+    ty = max(center_y - int(80 * s), th + 4)
 
     # Shadow
-    cv2.putText(frame, label, (tx + 3, ty + 3),
-                SKZ_FONT, scale, SKZ_BLACK, thick + 2, cv2.LINE_AA)
+    cv2.putText(frame, label, (tx + int(3 * s), ty + int(3 * s)),
+                SKZ_FONT, scale, SKZ_BLACK, thick + int(2 * s), cv2.LINE_AA)
     # Main text
     cv2.putText(frame, label, (tx, ty),
                 SKZ_FONT, scale, color, thick, cv2.LINE_AA)
@@ -325,11 +339,11 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                     skz_glow_circle(trace, (xCoor, yCoor), 8, SKZ_ORANGE, thickness=-1)
 
                 # Not shooting
-                elif(ymin >= (previous['hoop_height'] - 30) and (distance([xCoor, yCoor], previous['ball']) < 100)):
+                elif(ymin >= (previous['hoop_height'] - 30) and (distance([xCoor, yCoor], previous['ball']) < 250)):
                     # the moment when ball go below basket
                     if(during_shooting['isShooting']):
                         hoop_width = previous['hoop'][2] - previous['hoop'][0]
-                        margin = hoop_width * 0.25 # 25% margin of error on each side
+                        margin = hoop_width * 0.45 # 45% margin of error on each side
                         if(xCoor >= (previous['hoop'][0] - margin) and xCoor <= (previous['hoop'][2] + margin)):  # shot
                             shooting_result['attempts'] += 1
                             shooting_result['made'] += 1
