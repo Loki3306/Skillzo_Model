@@ -151,8 +151,9 @@ def openpose_init():
             sys.path.append(os.path.dirname(os.getcwd()))
             import OpenPose.Release.pyopenpose as op
         else:
-            path = os.path.join(os.getcwd(), 'OpenPose/openpose')
-            print(path)
+            # In Modal/Ubuntu, pyopenpose is built directly in /openpose/build/python/openpose
+            path = '/openpose/build/python/openpose'
+            print("Importing pyopenpose from:", path)
             sys.path.append(path)
             import pyopenpose as op
     except ImportError as e:
@@ -288,6 +289,20 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
 
     # Live scoreboard HUD
     skz_hud(frame, shooting_result.get('made', 0), shooting_result.get('attempts', 0))
+
+    # Find the largest hoop index first
+    best_hoop_idx = -1
+    max_hoop_area = 0
+    for i, box in enumerate(boxes[0]):
+        if scores[0][i] > 0.2 and classes[0][i] == 2:
+            h_ymin = int((box[0] * height))
+            h_xmin = int((box[1] * width))
+            h_ymax = int((box[2] * height))
+            h_xmax = int((box[3] * width))
+            h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
+            if h_area > max_hoop_area:
+                max_hoop_area = h_area
+                best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
         if (scores[0][i] > 0.2):
@@ -444,7 +459,7 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
                 previous['ball'][0] = xCoor
                 previous['ball'][1] = yCoor
 
-            if(classes[0][i] == 2):  # Rim
+            if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
                 # ── Hoop box: clear old, draw new in Skillzo orange ───────
                 cv2.rectangle(
                     trace, (previous['hoop'][0], previous['hoop'][1]),
@@ -484,6 +499,20 @@ def detect_image(img, response):
             feed_dict={image_tensor: img_expanded})
         valid_detections = 0
 
+        # Find the largest hoop index first
+        best_hoop_idx = -1
+        max_hoop_area = 0
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                h_ymin = int((box[0] * height))
+                h_xmin = int((box[1] * width))
+                h_ymax = int((box[2] * height))
+                h_xmax = int((box[3] * width))
+                h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
+                if h_area > max_hoop_area:
+                    max_hoop_area = h_area
+                    best_hoop_idx = i
+
         for i, box in enumerate(boxes[0]):
             # print("detect")
             if (scores[0][i] > 0.2):
@@ -506,7 +535,7 @@ def detect_image(img, response):
                             'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
                         }
                     })
-                if(classes[0][i] == 2):  # Rim
+                if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
                     cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_DARK, 12)
                     cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_ORANGE, 4)
                     skz_pill(img, "HOOP", (xCoor - 30, yCoor - 50), font_scale=0.7, accent=SKZ_ORANGE)
@@ -547,6 +576,20 @@ def detect_API(response, img):
             [boxes, scores, classes, num_detections],
             feed_dict={image_tensor: img_expanded})
 
+        # Find the largest hoop index first
+        best_hoop_idx = -1
+        max_hoop_area = 0
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                h_ymin = int((box[0] * height))
+                h_xmin = int((box[1] * width))
+                h_ymax = int((box[2] * height))
+                h_xmax = int((box[3] * width))
+                h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
+                if h_area > max_hoop_area:
+                    max_hoop_area = h_area
+                    best_hoop_idx = i
+
         for i, box in enumerate(boxes[0]):
             if (scores[0][i] > 0.2):
                 ymin = int((box[0] * height))
@@ -564,7 +607,7 @@ def detect_API(response, img):
                             'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
                         }
                     })
-                if(classes[0][i] == 2):  # Rim
+                if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
                     response.append({
                         'class': 'Hoop',
                         'detection_detail': {
