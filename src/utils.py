@@ -311,7 +311,7 @@ def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooti
             xCoor = int(np.mean([xmin, xmax]))
             yCoor = int(np.mean([ymin, ymax]))
             # Basketball (not head)
-            if(classes[0][i] == 1 and (distance([headX, headY], [xCoor, yCoor]) > 30)):
+            if(classes[0][i] == 0 and (distance([headX, headY], [xCoor, yCoor]) > 30)):
 
                 if 'frame_data' not in shooting_result: shooting_result['frame_data'] = []
                 shooting_result['frame_data'].append({"ball_x": float(xCoor), "ball_y": float(yCoor), "elbow_angle": float(elbowAngle), "knee_angle": float(kneeAngle)})
@@ -526,7 +526,7 @@ def detect_image(img, response):
             xmax = int((box[3] * width))
             xCoor = int(np.mean([xmin, xmax]))
             yCoor = int(np.mean([ymin, ymax]))
-            if(classes[0][i] == 1):  # basketball
+            if(classes[0][i] == 0):  # basketball
                 skz_glow_circle(img, (xCoor, yCoor), 25, SKZ_ORANGE, -1)
                 skz_pill(img, "BALL", (xCoor - 30, yCoor - 38), font_scale=0.7, accent=SKZ_ORANGE)
                 print("add basketball")
@@ -606,7 +606,7 @@ def detect_API(response, img):
             xmax = int((box[3] * width))
             xCoor = int(np.mean([xmin, xmax]))
             yCoor = int(np.mean([ymin, ymax]))
-            if(classes[0][i] == 1):  # basketball
+            if(classes[0][i] == 0):  # basketball
                 response.append({
                     'class': 'Basketball',
                     'detection_detail': {
