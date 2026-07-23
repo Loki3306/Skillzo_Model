@@ -500,67 +500,67 @@ def detect_image(img, response):
     classes = [classes_list]
     valid_detections = 0
 
-        # Find the largest hoop index first
-        best_hoop_idx = -1
-        max_hoop_area = 0
-        for i, box in enumerate(boxes[0]):
-            if scores[0][i] > 0.2 and classes[0][i] == 2:
-                h_ymin = int((box[0] * height))
-                h_xmin = int((box[1] * width))
-                h_ymax = int((box[2] * height))
-                h_xmax = int((box[3] * width))
-                h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
-                if h_area > max_hoop_area:
-                    max_hoop_area = h_area
-                    best_hoop_idx = i
+    # Find the largest hoop index first
+    best_hoop_idx = -1
+    max_hoop_area = 0
+    for i, box in enumerate(boxes[0]):
+        if scores[0][i] > 0.2 and classes[0][i] == 2:
+            h_ymin = int((box[0] * height))
+            h_xmin = int((box[1] * width))
+            h_ymax = int((box[2] * height))
+            h_xmax = int((box[3] * width))
+            h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
+            if h_area > max_hoop_area:
+                max_hoop_area = h_area
+                best_hoop_idx = i
 
-        for i, box in enumerate(boxes[0]):
-            # print("detect")
-            if (scores[0][i] > 0.2):
-                valid_detections += 1
-                ymin = int((box[0] * height))
-                xmin = int((box[1] * width))
-                ymax = int((box[2] * height))
-                xmax = int((box[3] * width))
-                xCoor = int(np.mean([xmin, xmax]))
-                yCoor = int(np.mean([ymin, ymax]))
-                if(classes[0][i] == 1):  # basketball
-                    skz_glow_circle(img, (xCoor, yCoor), 25, SKZ_ORANGE, -1)
-                    skz_pill(img, "BALL", (xCoor - 30, yCoor - 38), font_scale=0.7, accent=SKZ_ORANGE)
-                    print("add basketball")
-                    response.append({
-                        'class': 'Basketball',
-                        'detection_detail': {
-                            'confidence': float("{:.5f}".format(scores[0][i])),
-                            'center_coordinate': {'x': xCoor, 'y': yCoor},
-                            'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
-                        }
-                    })
-                if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
-                    cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_DARK, 12)
-                    cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_ORANGE, 4)
-                    skz_pill(img, "HOOP", (xCoor - 30, yCoor - 50), font_scale=0.7, accent=SKZ_ORANGE)
-                    print("add hoop")
-                    response.append({
-                        'class': 'Hoop',
-                        'detection_detail': {
-                            'confidence': float("{:.5f}".format(scores[0][i])),
-                            'center_coordinate': {'x': xCoor, 'y': yCoor},
-                            'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
-                        }
-                    })
-        
-        if(valid_detections < 2):
-            for i in range(2):
+    for i, box in enumerate(boxes[0]):
+        # print("detect")
+        if (scores[0][i] > 0.2):
+            valid_detections += 1
+            ymin = int((box[0] * height))
+            xmin = int((box[1] * width))
+            ymax = int((box[2] * height))
+            xmax = int((box[3] * width))
+            xCoor = int(np.mean([xmin, xmax]))
+            yCoor = int(np.mean([ymin, ymax]))
+            if(classes[0][i] == 1):  # basketball
+                skz_glow_circle(img, (xCoor, yCoor), 25, SKZ_ORANGE, -1)
+                skz_pill(img, "BALL", (xCoor - 30, yCoor - 38), font_scale=0.7, accent=SKZ_ORANGE)
+                print("add basketball")
                 response.append({
-                    'class': 'Not Found',
+                    'class': 'Basketball',
                     'detection_detail': {
-                        'confidence': 0.0,
-                        'center_coordinate': {'x': 0, 'y': 0},
-                        'box_boundary': {'x_min': 0, 'x_max': 0, 'y_min': 0, 'y_max': 0}
+                        'confidence': float("{:.5f}".format(scores[0][i])),
+                        'center_coordinate': {'x': xCoor, 'y': yCoor},
+                        'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
                     }
                 })
-            
+            if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
+                cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_DARK, 12)
+                cv2.rectangle(img, (xmin, ymax), (xmax, ymin), SKZ_ORANGE, 4)
+                skz_pill(img, "HOOP", (xCoor - 30, yCoor - 50), font_scale=0.7, accent=SKZ_ORANGE)
+                print("add hoop")
+                response.append({
+                    'class': 'Hoop',
+                    'detection_detail': {
+                        'confidence': float("{:.5f}".format(scores[0][i])),
+                        'center_coordinate': {'x': xCoor, 'y': yCoor},
+                        'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
+                    }
+                })
+    
+    if(valid_detections < 2):
+        for i in range(2):
+            response.append({
+                'class': 'Not Found',
+                'detection_detail': {
+                    'confidence': 0.0,
+                    'center_coordinate': {'x': 0, 'y': 0},
+                    'box_boundary': {'x_min': 0, 'x_max': 0, 'y_min': 0, 'y_max': 0}
+                }
+            })
+        
     return img
 
 def detect_API(response, img):
@@ -582,44 +582,44 @@ def detect_API(response, img):
     scores = [scores_list]
     classes = [classes_list]
 
-        # Find the largest hoop index first
-        best_hoop_idx = -1
-        max_hoop_area = 0
-        for i, box in enumerate(boxes[0]):
-            if scores[0][i] > 0.2 and classes[0][i] == 2:
-                h_ymin = int((box[0] * height))
-                h_xmin = int((box[1] * width))
-                h_ymax = int((box[2] * height))
-                h_xmax = int((box[3] * width))
-                h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
-                if h_area > max_hoop_area:
-                    max_hoop_area = h_area
-                    best_hoop_idx = i
+    # Find the largest hoop index first
+    best_hoop_idx = -1
+    max_hoop_area = 0
+    for i, box in enumerate(boxes[0]):
+        if scores[0][i] > 0.2 and classes[0][i] == 2:
+            h_ymin = int((box[0] * height))
+            h_xmin = int((box[1] * width))
+            h_ymax = int((box[2] * height))
+            h_xmax = int((box[3] * width))
+            h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
+            if h_area > max_hoop_area:
+                max_hoop_area = h_area
+                best_hoop_idx = i
 
-        for i, box in enumerate(boxes[0]):
-            if (scores[0][i] > 0.2):
-                ymin = int((box[0] * height))
-                xmin = int((box[1] * width))
-                ymax = int((box[2] * height))
-                xmax = int((box[3] * width))
-                xCoor = int(np.mean([xmin, xmax]))
-                yCoor = int(np.mean([ymin, ymax]))
-                if(classes[0][i] == 1):  # basketball
-                    response.append({
-                        'class': 'Basketball',
-                        'detection_detail': {
-                            'confidence': float(scores[0][i]),
-                            'center_coordinate': {'x': xCoor, 'y': yCoor},
-                            'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
-                        }
-                    })
-                if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
-                    response.append({
-                        'class': 'Hoop',
-                        'detection_detail': {
-                            'confidence': float(scores[0][i]),
-                            'center_coordinate': {'x': xCoor, 'y': yCoor},
-                            'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
-                        }
-                    })
+    for i, box in enumerate(boxes[0]):
+        if (scores[0][i] > 0.2):
+            ymin = int((box[0] * height))
+            xmin = int((box[1] * width))
+            ymax = int((box[2] * height))
+            xmax = int((box[3] * width))
+            xCoor = int(np.mean([xmin, xmax]))
+            yCoor = int(np.mean([ymin, ymax]))
+            if(classes[0][i] == 1):  # basketball
+                response.append({
+                    'class': 'Basketball',
+                    'detection_detail': {
+                        'confidence': float(scores[0][i]),
+                        'center_coordinate': {'x': xCoor, 'y': yCoor},
+                        'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
+                    }
+                })
+            if(classes[0][i] == 2 and i == best_hoop_idx):  # Rim
+                response.append({
+                    'class': 'Hoop',
+                    'detection_detail': {
+                        'confidence': float(scores[0][i]),
+                        'center_coordinate': {'x': xCoor, 'y': yCoor},
+                        'box_boundary': {'x_min': xmin, 'x_max': xmax, 'y_min': ymin, 'y_max': ymax}
+                    }
+                })
 

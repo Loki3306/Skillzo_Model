@@ -65,29 +65,25 @@ def getVideoStream(video_path):
         'judgement': ""
     }
 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.gpu_options.per_process_gpu_memory_fraction = 0.36
-
     skip_count = 0
-        while True:
-            ret, img = cap.read()
-            if ret == False:
-                break
-            skip_count += 1
-            if(skip_count < 4):
-                continue
-            skip_count = 0
-            detection, trace = detect_shot(img, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose)
+    while True:
+        ret, img = cap.read()
+        if ret == False:
+            break
+        skip_count += 1
+        if(skip_count < 4):
+            continue
+        skip_count = 0
+        detection, trace = detect_shot(img, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose)
 
-            detection = cv2.resize(detection, (0, 0), fx=0.83, fy=0.83)
-            if 'out_writer' not in shot_result:
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                shot_result['out_writer'] = cv2.VideoWriter('./static/detections/raw_output.mp4', fourcc, fps / 4.0, (detection.shape[1], detection.shape[0]))
-            shot_result['out_writer'].write(detection)
-            frame = cv2.imencode('.jpg', detection)[1].tobytes()
-            result = (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            yield result
+        detection = cv2.resize(detection, (0, 0), fx=0.83, fy=0.83)
+        if 'out_writer' not in shot_result:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            shot_result['out_writer'] = cv2.VideoWriter('./static/detections/raw_output.mp4', fourcc, fps / 4.0, (detection.shape[1], detection.shape[0]))
+        shot_result['out_writer'].write(detection)
+        frame = cv2.imencode('.jpg', detection)[1].tobytes()
+        result = (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield result
 
 
     # getting average shooting angle
