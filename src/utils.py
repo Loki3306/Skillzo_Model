@@ -2,7 +2,7 @@ import time
 from absl import app, logging
 import cv2
 import numpy as np
-import tensorflow.compat.v1 as tf
+from ultralytics import YOLO
 from flask import Flask, request, Response, jsonify, send_from_directory, abort
 import os
 from .config import shooting_result
@@ -11,7 +11,6 @@ from sys import platform
 import argparse
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-tf.disable_v2_behavior()
 
 # ─── Skillzo Brand Palette (BGR) ───────────────────────────────────────────
 SKZ_ORANGE   = (0,   107, 255)   # #FF6B00  — primary accent
@@ -115,32 +114,19 @@ def skz_judgement(frame, text, center_x, center_y):
     cv2.putText(frame, label, (tx, ty),
                 SKZ_FONT, scale, color, thick, cv2.LINE_AA)
 
-_cached_tf_session_vars = None
-_cached_op_wrapper = None
-_cached_op_datum = None
+_cached_yolo_model = None
 
-def tensorflow_init():
-    global _cached_tf_session_vars
-    if _cached_tf_session_vars is not None:
-        return _cached_tf_session_vars
-    MODEL_NAME = 'inference_graph'
-    PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
-
-    detection_graph = tf.Graph()
-    with detection_graph.as_default():
-        od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
-            serialized_graph = fid.read()
-            od_graph_def.ParseFromString(serialized_graph)
-            tf.import_graph_def(od_graph_def, name='')
-
-    image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-    boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-    scores = detection_graph.get_tensor_by_name('detection_scores:0')
-    classes = detection_graph.get_tensor_by_name('detection_classes:0')
-    num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-    _cached_tf_session_vars = (detection_graph, image_tensor, boxes, scores, classes, num_detections)
-    return _cached_tf_session_vars
+def yolo_init():
+    global _cached_yolo_model
+    if _cached_yolo_model is not None:
+        return _cached_yolo_model
+    
+    model_path = os.path.join(os.getcwd(), 'best.pt')
+    if not os.path.exists(model_path):
+        model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'best.pt')
+    
+    _cached_yolo_model = YOLO(model_path)
+    return _cached_yolo_model
 
 def openpose_init():
     global _cached_op_wrapper, _cached_op_datum
@@ -234,7 +220,7 @@ def getAngleFromDatum(datum):
     kneeCoord = np.array([int(kneeX), int(kneeY)])
     return elbowAngle, kneeAngle, elbowCoord, kneeCoord
 
-def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, classes, num_detections, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose):
+def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose):
     global shooting_result
     
 
@@ -265,11 +251,21 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
         elbowCoord = np.array([0, 0])
         kneeCoord = np.array([0, 0])
 
-    frame_expanded = np.expand_dims(frame, axis=0)
-    # main tensorflow detection
-    (boxes, scores, classes, num_detections) = sess.run(
-        [boxes, scores, classes, num_detections],
-        feed_dict={image_tensor: frame_expanded})
+    # main YOLO detection
+    results = yolo_model(frame, verbose=False)[0]
+    boxes_list = []
+    scores_list = []
+    classes_list = []
+    for box in results.boxes:
+        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        conf = float(box.conf[0])
+        cls = int(box.cls[0])
+        boxes_list.append([y1/height, x1/width, y2/height, x2/width])
+        scores_list.append(conf)
+        classes_list.append(cls)
+    boxes = [boxes_list]
+    scores = [scores_list]
+    classes = [classes_list]
 
     # ─── Skillzo overlay: stat badges + HUD ───────────────────────────────
     frame = datum.cvOutputData
@@ -486,18 +482,23 @@ def detect_shot(frame, trace, width, height, sess, image_tensor, boxes, scores, 
 
 def detect_image(img, response):
     height, width = img.shape[:2]
-    detection_graph, image_tensor, boxes, scores, classes, num_detections = tensorflow_init()
+    yolo_model = yolo_init()
 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.gpu_options.per_process_gpu_memory_fraction = 0.36
-
-    with tf.Session(graph=detection_graph, config=config) as sess:
-        img_expanded = np.expand_dims(img, axis=0)
-        (boxes, scores, classes, num_detections) = sess.run(
-            [boxes, scores, classes, num_detections],
-            feed_dict={image_tensor: img_expanded})
-        valid_detections = 0
+    results = yolo_model(img, verbose=False)[0]
+    boxes_list = []
+    scores_list = []
+    classes_list = []
+    for box in results.boxes:
+        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        conf = float(box.conf[0])
+        cls = int(box.cls[0])
+        boxes_list.append([y1/height, x1/width, y2/height, x2/width])
+        scores_list.append(conf)
+        classes_list.append(cls)
+    boxes = [boxes_list]
+    scores = [scores_list]
+    classes = [classes_list]
+    valid_detections = 0
 
         # Find the largest hoop index first
         best_hoop_idx = -1
@@ -564,17 +565,22 @@ def detect_image(img, response):
 
 def detect_API(response, img):
     height, width = img.shape[:2]
-    detection_graph, image_tensor, boxes, scores, classes, num_detections = tensorflow_init()
+    yolo_model = yolo_init()
 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.gpu_options.per_process_gpu_memory_fraction = 0.36
-
-    with tf.Session(graph=detection_graph, config=config) as sess:
-        img_expanded = np.expand_dims(img, axis=0)
-        (boxes, scores, classes, num_detections) = sess.run(
-            [boxes, scores, classes, num_detections],
-            feed_dict={image_tensor: img_expanded})
+    results = yolo_model(img, verbose=False)[0]
+    boxes_list = []
+    scores_list = []
+    classes_list = []
+    for box in results.boxes:
+        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        conf = float(box.conf[0])
+        cls = int(box.cls[0])
+        boxes_list.append([y1/height, x1/width, y2/height, x2/width])
+        scores_list.append(conf)
+        classes_list.append(cls)
+    boxes = [boxes_list]
+    scores = [scores_list]
+    classes = [classes_list]
 
         # Find the largest hoop index first
         best_hoop_idx = -1

@@ -11,9 +11,8 @@ from sys import platform
 import argparse
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from .utils import detect_shot, detect_image, detect_API, tensorflow_init, openpose_init
+from .utils import detect_shot, detect_image, detect_API, yolo_init, openpose_init
 from statistics import mean
-tf.disable_v2_behavior()
 
 def getVideoStream(video_path):
     global shooting_result
@@ -30,7 +29,7 @@ def getVideoStream(video_path):
     })
     
     datum, opWrapper = openpose_init()
-    detection_graph, image_tensor, boxes, scores, classes, num_detections = tensorflow_init()
+    yolo_model = yolo_init()
 
     cap = cv2.VideoCapture(video_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -71,7 +70,6 @@ def getVideoStream(video_path):
     config.gpu_options.per_process_gpu_memory_fraction = 0.36
 
     skip_count = 0
-    with tf.Session(graph=detection_graph, config=config) as sess:
         while True:
             ret, img = cap.read()
             if ret == False:
@@ -80,8 +78,7 @@ def getVideoStream(video_path):
             if(skip_count < 4):
                 continue
             skip_count = 0
-            detection, trace = detect_shot(img, trace, width, height, sess, image_tensor, boxes, scores, classes,
-                                        num_detections, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose)
+            detection, trace = detect_shot(img, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose)
 
             detection = cv2.resize(detection, (0, 0), fx=0.83, fy=0.83)
             if 'out_writer' not in shot_result:
