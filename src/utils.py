@@ -115,6 +115,8 @@ def skz_judgement(frame, text, center_x, center_y):
                 SKZ_FONT, scale, color, thick, cv2.LINE_AA)
 
 _cached_yolo_model = None
+_cached_op_wrapper = None
+_cached_op_datum = None
 
 def yolo_init():
     global _cached_yolo_model
