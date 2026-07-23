@@ -7,34 +7,12 @@ import sys
 image = (
     modal.Image.from_registry("nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04", add_python="3.10")
     .env({"DEBIAN_FRONTEND": "noninteractive", "TZ": "Etc/UTC"})
-    .apt_install(
-        "git", "cmake", "make", "g++", "wget",
-        "libprotobuf-dev", "protobuf-compiler", "libgoogle-glog-dev", 
-        "libgflags-dev", "libleveldb-dev", "libsnappy-dev", 
-        "libhdf5-serial-dev", "libatlas-base-dev", "libopencv-dev", 
-        "libboost-all-dev", "liblmdb-dev"
-    )
-    .run_commands(
-        # Clone OpenPose
-        "git clone https://github.com/CMU-Perceptual-Computing-Lab/openpose.git /openpose",
-        "mkdir -p /openpose/build",
-        # Run CMake to configure the build (matching your Kaggle settings exactly)
-        "cd /openpose/build && cmake -DBUILD_PYTHON=ON "
-        "-DPYTHON_EXECUTABLE=/usr/local/bin/python "
-        "-DDOWNLOAD_BODY_25_MODEL=OFF "
-        "-DDOWNLOAD_BODY_COCO_MODEL=OFF "
-        "-DDOWNLOAD_BODY_MPI_MODEL=OFF "
-        "-DDOWNLOAD_FACE_MODEL=OFF "
-        "-DDOWNLOAD_HAND_MODEL=OFF ..",
-        # Compile it using all available CPU cores
-        "cd /openpose/build && make -j$(nproc)",
-    )
+    .apt_install("git", "wget", "ffmpeg", "libsm6", "libxext6")
     .pip_install(
         "numpy", "flask", "werkzeug", "requests", "ultralytics",
         "tensorflow==2.15.0", "protobuf==4.25.3", "opencv-python-headless", 
         "matplotlib", "scipy", "pandas", "filterpy", "imutils"
     )
-    .apt_install("ffmpeg")
 )
 
 # 2. Create the Modal App

@@ -130,39 +130,19 @@ def yolo_init():
     _cached_yolo_model = YOLO(model_path)
     return _cached_yolo_model
 
-def openpose_init():
-    global _cached_op_wrapper, _cached_op_datum
-    if _cached_op_wrapper is not None:
-        return _cached_op_datum, _cached_op_wrapper
-    try:
-        if platform == "win32":
-            sys.path.append(os.path.dirname(os.getcwd()))
-            import OpenPose.Release.pyopenpose as op
-        else:
-            # In Modal/Ubuntu, pyopenpose is built directly in /openpose/build/python/openpose
-            path = '/openpose/build/python/openpose'
-            print("Importing pyopenpose from:", path)
-            sys.path.append(path)
-            import pyopenpose as op
-    except ImportError as e:
-        print("Something went wrong when importing OpenPose")
-        raise e
+_cached_yolo_pose_model = None
 
-    # Custom Params (refer to include/openpose/flags.hpp for more parameters)
-    params = dict()
-    params["model_folder"] = "./OpenPose/models"
-    params["num_gpu"] = 1
-    params["num_gpu_start"] = 0
-
-    # Starting OpenPose
-    opWrapper = op.WrapperPython()
-    opWrapper.configure(params)
-    opWrapper.start()
-
-    # Process Image
-    _cached_op_datum = op.Datum()
-    _cached_op_wrapper = opWrapper
-    return _cached_op_datum, _cached_op_wrapper
+def yolo_pose_init():
+    global _cached_yolo_pose_model
+    if _cached_yolo_pose_model is not None:
+        return _cached_yolo_pose_model
+    
+    model_path = os.path.join(os.getcwd(), 'yolo11n-pose.pt')
+    if not os.path.exists(model_path):
+        model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'yolo11n-pose.pt')
+    
+    _cached_yolo_pose_model = YOLO(model_path)
+    return _cached_yolo_pose_model
 
 def fit_func(x, a, b, c):
     return a*(x ** 2) + b * x + c
@@ -204,25 +184,30 @@ def calculateAngle(a, b, c):
     return round(np.degrees(angle), 2)
 
 
-def getAngleFromDatum(datum):
-    hipX, hipY, _ = datum.poseKeypoints[0][9]
-    kneeX, kneeY, _ = datum.poseKeypoints[0][10]
-    ankleX, ankleY, _ = datum.poseKeypoints[0][11]
+def getAngleFromYolo(pose_results):
+    if not pose_results or pose_results[0].keypoints is None or len(pose_results[0].keypoints) == 0:
+        return 0, 0, np.array([0, 0]), np.array([0, 0])
+        
+    kpts = pose_results[0].keypoints.data[0].cpu().numpy()
+    
+    # Right Hip: 12, Right Knee: 14, Right Ankle: 16
+    hipX, hipY = kpts[12][:2]
+    kneeX, kneeY = kpts[14][:2]
+    ankleX, ankleY = kpts[16][:2]
 
-    shoulderX, shoulderY, _ = datum.poseKeypoints[0][2]
-    elbowX, elbowY, _ = datum.poseKeypoints[0][3]
-    wristX, wristY, _ = datum.poseKeypoints[0][4]
+    # Right Shoulder: 6, Right Elbow: 8, Right Wrist: 10
+    shoulderX, shoulderY = kpts[6][:2]
+    elbowX, elbowY = kpts[8][:2]
+    wristX, wristY = kpts[10][:2]
 
-    kneeAngle = calculateAngle(np.array([hipX, hipY]), np.array(
-        [kneeX, kneeY]), np.array([ankleX, ankleY]))
-    elbowAngle = calculateAngle(np.array([shoulderX, shoulderY]), np.array(
-        [elbowX, elbowY]), np.array([wristX, wristY]))
+    kneeAngle = calculateAngle(np.array([hipX, hipY]), np.array([kneeX, kneeY]), np.array([ankleX, ankleY]))
+    elbowAngle = calculateAngle(np.array([shoulderX, shoulderY]), np.array([elbowX, elbowY]), np.array([wristX, wristY]))
 
     elbowCoord = np.array([int(elbowX), int(elbowY)])
     kneeCoord = np.array([int(kneeX), int(kneeY)])
     return elbowAngle, kneeAngle, elbowCoord, kneeCoord
 
-def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, datum, opWrapper, shooting_pose):
+def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, yolo_pose_model, shooting_pose):
     global shooting_result
     
 
@@ -234,16 +219,16 @@ def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooti
         shooting_pose['ballInHand_frames'] += 1
         # print("ball in hand")
 
-    # getting openpose keypoints
-    datum.cvInputData = frame
-    import pyopenpose as op
-    opWrapper.emplaceAndPop(op.VectorDatum([datum]))
+    # getting YOLO pose keypoints
+    pose_results = yolo_pose_model(frame, verbose=False)
+    
     try:
-        headX, headY, headConf = datum.poseKeypoints[0][0]
-        handX, handY, handConf = datum.poseKeypoints[0][4]
-        elbowAngle, kneeAngle, elbowCoord, kneeCoord = getAngleFromDatum(datum)
+        kpts = pose_results[0].keypoints.data[0].cpu().numpy()
+        headX, headY = kpts[0][:2]  # Nose
+        handX, handY = kpts[10][:2] # Right Wrist
+        elbowAngle, kneeAngle, elbowCoord, kneeCoord = getAngleFromYolo(pose_results)
     except:
-        print("Something went wrong with OpenPose")
+        print("Something went wrong with YOLO Pose")
         headX = 0
         headY = 0
         handX = 0
@@ -270,7 +255,7 @@ def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooti
     classes = [classes_list]
 
     # ─── Skillzo overlay: stat badges + HUD ───────────────────────────────
-    frame = datum.cvOutputData
+    frame = pose_results[0].plot()
 
     # Joint angle pill badges anchored to the joint positions
     skz_pill(frame, f'ELBOW  {elbowAngle:.1f}deg',
