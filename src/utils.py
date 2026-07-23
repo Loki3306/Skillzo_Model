@@ -204,7 +204,7 @@ def getAngleFromYolo(pose_results):
     kneeCoord = np.array([int(kneeX), int(kneeY)])
     return elbowAngle, kneeAngle, elbowCoord, kneeCoord
 
-def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, yolo_pose_model, shooting_pose):
+def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, yolo_pose_model, shooting_pose, hoop_x=None, hoop_y=None):
     global shooting_result
     
 
@@ -270,14 +270,31 @@ def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooti
     # Live scoreboard HUD
     skz_hud(frame, shooting_result.get('made', 0), shooting_result.get('attempts', 0))
 
-    # Find the most confident hoop index first
+    # Find the best hoop index
     best_hoop_idx = -1
-    max_hoop_score = 0
-    for i, box in enumerate(boxes[0]):
-        if scores[0][i] > 0.2 and classes[0][i] == 2:
-            if scores[0][i] > max_hoop_score:
-                max_hoop_score = scores[0][i]
-                best_hoop_idx = i
+    if hoop_x is not None and hoop_y is not None:
+        target_x = hoop_x * width
+        target_y = hoop_y * height
+        min_dist = float('inf')
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                ymin = int((box[0] * height))
+                xmin = int((box[1] * width))
+                ymax = int((box[2] * height))
+                xmax = int((box[3] * width))
+                center_x = (xmin + xmax) / 2
+                center_y = (ymin + ymax) / 2
+                dist = (center_x - target_x)**2 + (center_y - target_y)**2
+                if dist < min_dist:
+                    min_dist = dist
+                    best_hoop_idx = i
+    else:
+        max_hoop_score = 0
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                if scores[0][i] > max_hoop_score:
+                    max_hoop_score = scores[0][i]
+                    best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
         if (scores[0][i] > 0.2):
@@ -459,7 +476,7 @@ def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooti
     return combined, trace
 
 
-def detect_image(img, response):
+def detect_image(img, response, hoop_x=None, hoop_y=None):
     height, width = img.shape[:2]
     yolo_model = yolo_init()
 
@@ -479,14 +496,31 @@ def detect_image(img, response):
     classes = [classes_list]
     valid_detections = 0
 
-    # Find the most confident hoop index first
+    # Find the best hoop index
     best_hoop_idx = -1
-    max_hoop_score = 0
-    for i, box in enumerate(boxes[0]):
-        if scores[0][i] > 0.2 and classes[0][i] == 2:
-            if scores[0][i] > max_hoop_score:
-                max_hoop_score = scores[0][i]
-                best_hoop_idx = i
+    if hoop_x is not None and hoop_y is not None:
+        target_x = hoop_x * width
+        target_y = hoop_y * height
+        min_dist = float('inf')
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                ymin = int((box[0] * height))
+                xmin = int((box[1] * width))
+                ymax = int((box[2] * height))
+                xmax = int((box[3] * width))
+                center_x = (xmin + xmax) / 2
+                center_y = (ymin + ymax) / 2
+                dist = (center_x - target_x)**2 + (center_y - target_y)**2
+                if dist < min_dist:
+                    min_dist = dist
+                    best_hoop_idx = i
+    else:
+        max_hoop_score = 0
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                if scores[0][i] > max_hoop_score:
+                    max_hoop_score = scores[0][i]
+                    best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
         # print("detect")
@@ -537,7 +571,7 @@ def detect_image(img, response):
         
     return img
 
-def detect_API(response, img):
+def detect_API(response, img, hoop_x=None, hoop_y=None):
     height, width = img.shape[:2]
     yolo_model = yolo_init()
 
@@ -556,14 +590,31 @@ def detect_API(response, img):
     scores = [scores_list]
     classes = [classes_list]
 
-    # Find the most confident hoop index first
+    # Find the best hoop index
     best_hoop_idx = -1
-    max_hoop_score = 0
-    for i, box in enumerate(boxes[0]):
-        if scores[0][i] > 0.2 and classes[0][i] == 2:
-            if scores[0][i] > max_hoop_score:
-                max_hoop_score = scores[0][i]
-                best_hoop_idx = i
+    if hoop_x is not None and hoop_y is not None:
+        target_x = hoop_x * width
+        target_y = hoop_y * height
+        min_dist = float('inf')
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                ymin = int((box[0] * height))
+                xmin = int((box[1] * width))
+                ymax = int((box[2] * height))
+                xmax = int((box[3] * width))
+                center_x = (xmin + xmax) / 2
+                center_y = (ymin + ymax) / 2
+                dist = (center_x - target_x)**2 + (center_y - target_y)**2
+                if dist < min_dist:
+                    min_dist = dist
+                    best_hoop_idx = i
+    else:
+        max_hoop_score = 0
+        for i, box in enumerate(boxes[0]):
+            if scores[0][i] > 0.2 and classes[0][i] == 2:
+                if scores[0][i] > max_hoop_score:
+                    max_hoop_score = scores[0][i]
+                    best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
         if (scores[0][i] > 0.2):

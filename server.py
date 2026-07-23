@@ -28,16 +28,18 @@ def handle_video():
 
 @app.route('/api/video_feed')
 def video_feed():
-    stream = getVideoStream(request.args.get('video_path'))
+    hoop_x = request.args.get('hoop_x', type=float, default=None)
+    hoop_y = request.args.get('hoop_y', type=float, default=None)
+    stream = getVideoStream(request.args.get('video_path'), hoop_x, hoop_y)
     return Response(stream, mimetype='multipart/x-mixed-replace; boundary=frame', headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 # --- Async processing: start in background thread, poll for status ---
 
-def _run_processing(video_path):
+def _run_processing(video_path, hoop_x=None, hoop_y=None):
     """Background worker that runs the full AI pipeline."""
     global _processing_status
     try:
-        stream = getVideoStream(video_path)
+        stream = getVideoStream(video_path, hoop_x, hoop_y)
         for _ in stream:
             pass
         with _processing_lock:
@@ -51,6 +53,8 @@ def start_processing():
     """Kick off processing in a background thread. Returns instantly."""
     global _processing_status
     video_path = request.args.get('video_path')
+    hoop_x = request.args.get('hoop_x', type=float, default=None)
+    hoop_y = request.args.get('hoop_y', type=float, default=None)
     if not video_path:
         return jsonify({"error": "video_path is required"}), 400
 
@@ -59,7 +63,7 @@ def start_processing():
             return jsonify({"status": "already_running"}), 409
         _processing_status = {"state": "running", "error": None}
 
-    t = threading.Thread(target=_run_processing, args=(video_path,), daemon=True)
+    t = threading.Thread(target=_run_processing, args=(video_path, hoop_x, hoop_y), daemon=True)
     t.start()
     return jsonify({"status": "started"})
 
@@ -72,7 +76,9 @@ def processing_status():
 # Legacy sync endpoint (kept for backwards compat)
 @app.route('/api/process_video_fast')
 def process_video_fast():
-    stream = getVideoStream(request.args.get('video_path'))
+    hoop_x = request.args.get('hoop_x', type=float, default=None)
+    hoop_y = request.args.get('hoop_y', type=float, default=None)
+    stream = getVideoStream(request.args.get('video_path'), hoop_x, hoop_y)
     for _ in stream:
         pass
     return jsonify({"status": "done"})

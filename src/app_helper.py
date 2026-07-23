@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 from .utils import detect_shot, detect_image, detect_API, yolo_init, yolo_pose_init
 from statistics import mean
 
-def getVideoStream(video_path):
+def getVideoStream(video_path, hoop_x=None, hoop_y=None):
     global shooting_result
     shooting_result.update({
         'attempts': 0,
@@ -76,7 +76,7 @@ def getVideoStream(video_path):
         if(skip_count < 4):
             continue
         skip_count = 0
-        detection, trace = detect_shot(img, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, yolo_pose_model, shooting_pose)
+        detection, trace = detect_shot(img, trace, width, height, yolo_model, previous, during_shooting, shot_result, fig, yolo_pose_model, shooting_pose, hoop_x, hoop_y)
 
         detection = cv2.resize(detection, (0, 0), fx=0.83, fy=0.83)
         if 'out_writer' not in shot_result:
