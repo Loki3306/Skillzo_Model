@@ -35,6 +35,8 @@ def getVideoStream(video_path):
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
     fps = cap.get(cv2.CAP_PROP_FPS)
+    if not fps or fps == 0:
+        fps = 30.0
     trace = np.full((int(height), int(width), 3), 255, np.uint8)
 
     fig = plt.figure()
