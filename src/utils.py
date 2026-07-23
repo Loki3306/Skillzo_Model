@@ -137,11 +137,8 @@ def yolo_pose_init():
     if _cached_yolo_pose_model is not None:
         return _cached_yolo_pose_model
     
-    model_path = os.path.join(os.getcwd(), 'yolo11n-pose.pt')
-    if not os.path.exists(model_path):
-        model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'yolo11n-pose.pt')
-    
-    _cached_yolo_pose_model = YOLO(model_path)
+    # Let Ultralytics natively handle downloading and path resolution
+    _cached_yolo_pose_model = YOLO("yolo11n-pose.pt")
     return _cached_yolo_pose_model
 
 def fit_func(x, a, b, c):
@@ -273,18 +270,13 @@ def detect_shot(frame, trace, width, height, yolo_model, previous, during_shooti
     # Live scoreboard HUD
     skz_hud(frame, shooting_result.get('made', 0), shooting_result.get('attempts', 0))
 
-    # Find the largest hoop index first
+    # Find the most confident hoop index first
     best_hoop_idx = -1
-    max_hoop_area = 0
+    max_hoop_score = 0
     for i, box in enumerate(boxes[0]):
         if scores[0][i] > 0.2 and classes[0][i] == 2:
-            h_ymin = int((box[0] * height))
-            h_xmin = int((box[1] * width))
-            h_ymax = int((box[2] * height))
-            h_xmax = int((box[3] * width))
-            h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
-            if h_area > max_hoop_area:
-                max_hoop_area = h_area
+            if scores[0][i] > max_hoop_score:
+                max_hoop_score = scores[0][i]
                 best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
@@ -487,18 +479,13 @@ def detect_image(img, response):
     classes = [classes_list]
     valid_detections = 0
 
-    # Find the largest hoop index first
+    # Find the most confident hoop index first
     best_hoop_idx = -1
-    max_hoop_area = 0
+    max_hoop_score = 0
     for i, box in enumerate(boxes[0]):
         if scores[0][i] > 0.2 and classes[0][i] == 2:
-            h_ymin = int((box[0] * height))
-            h_xmin = int((box[1] * width))
-            h_ymax = int((box[2] * height))
-            h_xmax = int((box[3] * width))
-            h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
-            if h_area > max_hoop_area:
-                max_hoop_area = h_area
+            if scores[0][i] > max_hoop_score:
+                max_hoop_score = scores[0][i]
                 best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
@@ -569,18 +556,13 @@ def detect_API(response, img):
     scores = [scores_list]
     classes = [classes_list]
 
-    # Find the largest hoop index first
+    # Find the most confident hoop index first
     best_hoop_idx = -1
-    max_hoop_area = 0
+    max_hoop_score = 0
     for i, box in enumerate(boxes[0]):
         if scores[0][i] > 0.2 and classes[0][i] == 2:
-            h_ymin = int((box[0] * height))
-            h_xmin = int((box[1] * width))
-            h_ymax = int((box[2] * height))
-            h_xmax = int((box[3] * width))
-            h_area = (h_xmax - h_xmin) * (h_ymax - h_ymin)
-            if h_area > max_hoop_area:
-                max_hoop_area = h_area
+            if scores[0][i] > max_hoop_score:
+                max_hoop_score = scores[0][i]
                 best_hoop_idx = i
 
     for i, box in enumerate(boxes[0]):
